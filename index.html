@@ -32,23 +32,26 @@ $(function(){
 
   // -------------------- Header --------------------
   function createHeader(){
-      if(!$("#global-header").length){
-          $("body").prepend(`
-            <div id="global-header">
-              <span id='name'><a href='#' id='show-all'>yin xue</a></span>
-              <span id='menu'>
-                <a href='#' id='show-projects'>projects</a>&nbsp;&nbsp;
-                <a href='#' id='show-commissions'>commissions</a>&nbsp;&nbsp;
-                <a href='#' id='show-about'>about</a>
-              </span>
-            </div>
-          `);
-      }
+    if(!$("#global-header").length){
+        $("body").prepend(`
+          <div id="global-header">
+            <span id='name'><a href='#' id='show-all'>yin xue</a></span>
+            <span id='menu'>
+              <a href='#' id='show-projects'>projects</a>&nbsp;&nbsp;
+              <a href='#' id='show-commissions'>commissions</a>&nbsp;&nbsp;
+              <a href='#' id='show-about'>about</a>
+            </span>
+          </div>
+        `);
+    }
 
-      $(document).on("click", "#show-all", ()=>showSection("all"));
-      $(document).on("click", "#show-projects", ()=>showSection("projects"));
-      $(document).on("click", "#show-commissions", ()=>showSection("commissions"));
-      $(document).on("click", "#show-about", ()=>showSection("about"));
+    // Remove old handlers and attach fresh ones each time
+    $(document)
+      .off("click.section")
+      .on("click.section", "#show-all", (e)=>{ e.preventDefault(); showSection("all"); })
+      .on("click.section", "#show-projects", (e)=>{ e.preventDefault(); showSection("projects"); })
+      .on("click.section", "#show-commissions", (e)=>{ e.preventDefault(); showSection("commissions"); })
+      .on("click.section", "#show-about", (e)=>{ e.preventDefault(); showSection("about"); });
   }
 
   // -------------------- Build Grid --------------------
@@ -113,21 +116,54 @@ $(function(){
 
   // -------------------- Section Filter --------------------
   function showSection(section){
-      if(!$(".grid").length) return;
-      $(".grid-item").hide();
-      if(section === "all"){ $(".grid-item").fadeIn(300); $(".back-btn").remove(); return; }
-      $("." + section + "-item").fadeIn(300);
+    const grid = $(".grid");
+    if(!grid.length) return;
 
-      if(!$(".back-btn").length){
-          $("#global-header").after("<div class='back-btn'><a href='#' id='back-all'>← back</a></div>");
-          $("#back-all").on("click", function(e){
-              e.preventDefault();
-              $(".back-btn").fadeOut(200, function(){ $(this).remove(); });
-              showSection("all");
-          });
-      }
+    const allItems = $(".grid-item");
+    const projItems = $(".projects-item");
+    const commItems = $(".commissions-item");
+    const aboutItems = $(".about-item");
+
+    // Reset styles before applying filter
+    allItems.stop(true,true)
+      .css({
+        "opacity": 1,
+        "pointer-events": "auto",
+        "flex": "1 0 40%",
+        "transition": "opacity 0.4s ease"
+      });
+
+    // clear active state
+    $("#menu a").removeClass("active");
+
+    switch(section){
+      case "projects":
+        $("#show-projects").addClass("active");
+        commItems.css({"opacity":0,"pointer-events":"none"});
+        projItems.css({"opacity":1,"pointer-events":"auto"});
+        aboutItems.css({"opacity":0,"pointer-events":"none"});
+        break;
+
+      case "commissions":
+        $("#show-commissions").addClass("active");
+        projItems.css({"opacity":0,"pointer-events":"none"});
+        commItems.css({"opacity":1,"pointer-events":"auto"});
+        aboutItems.css({"opacity":0,"pointer-events":"none"});
+        break;
+
+      case "about":
+        $("#show-about").addClass("active");
+        allItems.css({"opacity":0,"pointer-events":"none"});
+        aboutItems.css({"opacity":1,"pointer-events":"auto"});
+        break;
+
+      case "all":
+      default:
+        $("#show-all").addClass("active");
+        allItems.css({"opacity":1,"pointer-events":"auto"});
+        break;
+    }
   }
-
   // -------------------- Project View --------------------
   function loadProject(section, folder, push){
       const oldContent = $(".content");
