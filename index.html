@@ -114,10 +114,35 @@ $(function(){
   // -------------------- Section Filter --------------------
   function showSection(section){
       if(!$(".grid").length) return;
-      $(".grid-item").hide();
-      if(section === "all"){ $(".grid-item").fadeIn(300); $(".back-btn").remove(); return; }
-      $("." + section + "-item").fadeIn(300);
 
+      const allItems = $(".grid-item");
+      const projItems = $(".projects-item");
+      const commItems = $(".commissions-item");
+
+      // Reset all
+      allItems.stop(true, true).css("flex", "1 0 40%").show();
+
+      switch(section){
+          case "projects":
+              commItems.hide();
+              projItems.css("flex", "1 0 40%").fadeIn(300);
+              break;
+          case "commissions":
+              projItems.hide();
+              commItems.css("flex", "1 0 40%").fadeIn(300);
+              break;
+          case "about":
+              allItems.hide();
+              $(".about-item").fadeIn(300);
+              break;
+          case "all":
+          default:
+              allItems.css("flex", "1 0 40%").fadeIn(300);
+              $(".back-btn").remove();
+              return;
+      }
+
+      // Add back button if not already there
       if(!$(".back-btn").length){
           $("#global-header").after("<div class='back-btn'><a href='#' id='back-all'>← back</a></div>");
           $("#back-all").on("click", function(e){
