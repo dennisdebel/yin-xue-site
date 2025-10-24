@@ -53,7 +53,6 @@ $(function(){
   }
 
   // ---------- Header ----------
-// ---------- Header ----------
   function createHeader(){
     if(!$("#global-header").length){
       $("body").prepend(`
@@ -68,37 +67,48 @@ $(function(){
       `);
     }
 
-    // Clean rebind with navigation awareness
+    // universal navigation: always reset to home first
     $(document)
       .off("click.nav")
       .on("click.nav", "#show-all", function(e){
         e.preventDefault();
-        history.pushState({}, "", "./");
-        $(".content, .project-back, .back-btn").remove();
-        renderHome();
-        setTimeout(()=>showSection("all"), 200);
+        goHomeAndFilter("all");
       })
       .on("click.nav", "#show-projects", function(e){
         e.preventDefault();
-        history.pushState({}, "", "./");
-        $(".content, .project-back, .back-btn").remove();
-        renderHome();
-        setTimeout(()=>showSection("projects"), 200);
+        goHomeAndFilter("projects");
       })
       .on("click.nav", "#show-commissions", function(e){
         e.preventDefault();
-        history.pushState({}, "", "./");
-        $(".content, .project-back, .back-btn").remove();
-        renderHome();
-        setTimeout(()=>showSection("commissions"), 200);
+        goHomeAndFilter("commissions");
       })
       .on("click.nav", "#show-about", function(e){
         e.preventDefault();
-        history.pushState({}, "", "./");
-        $(".content, .project-back, .back-btn").remove();
-        renderHome();
-        setTimeout(()=>showSection("about"), 200);
+        goHomeAndFilter("about");
       });
+  }
+
+  // Helper that safely tears down and rebuilds the home grid
+  function goHomeAndFilter(section){
+    // wipe any current content (project view, back button, old grid)
+    $(".content, .project-back, .back-btn").remove();
+
+    // reset URL
+    history.pushState({}, "", "./");
+
+    // rebuild the home grid from manifest (if already loaded)
+    if (manifest){
+      renderHome();
+      // wait a short moment for DOM insertion, then filter
+      setTimeout(()=>showSection(section), 200);
+    } else {
+      // manifest not ready yet, fetch then retry
+      $.getJSON("manifest.json").done(data=>{
+        manifest = data;
+        renderHome();
+        setTimeout(()=>showSection(section), 200);
+      });
+    }
   }
 
 
