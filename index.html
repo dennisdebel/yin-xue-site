@@ -13,18 +13,16 @@ $(function(){
   let manifest = null;
 
   // --------------------------------------------------------------------------
-  // Load manifest.json once
+  // Load manifest and handle deep links
   // --------------------------------------------------------------------------
   $.getJSON("manifest.json", function(data){
       manifest = data;
-
-      // Check if URL contains ?section=&project=
       const params = new URLSearchParams(window.location.search);
       const section = params.get("section");
       const project = params.get("project");
 
       if(section && project && data[section] && data[section][project]){
-          loadProject(section, project, false); // don't pushState again
+          loadProject(section, project, false);
       } else {
           buildHome(data);
       }
@@ -33,155 +31,167 @@ $(function(){
   });
 
   // --------------------------------------------------------------------------
-  // Build home grid view
+  // Persistent header creation (always visible)
   // --------------------------------------------------------------------------
-  function buildHome(data){
-      $("body").empty().append("<div class='grid'></div>");
-
-      $(".grid").append(`
-        <div class='header'>
-          <span id='name'><a href='./'>yin xue</a></span>
-          <span id='menu'>
-            <a href='#' id='show-all'>all</a>&nbsp;&nbsp;
-            <a href='#' id='show-projects'>projects</a>&nbsp;&nbsp;
-            <a href='#' id='show-commissions'>commissions</a>&nbsp;&nbsp;
-            <a href='#' id='show-about'>about</a>
-          </span>
-        </div>
-      `);
-
-      // Build grid items
-      for (const section in data){
-          const folders = data[section];
-          for (const folder in folders){
-              const files = folders[folder];
-              const img = files.find(f => /\.(png|jpe?g|gif)$/i.test(f));
-              const txt = files.find(f => /\.txt$/i.test(f));
-
-              if(section === "about"){
-                  $(".grid").append(`
-                    <div class='grid-item about-item'>
-                      <div class='about-text' data-file='${section}/${txt || ""}'>Loading…</div>
-                    </div>
-                  `);
-              } else if(img){
-                  $(".grid").append(`
-                    <div class='grid-item ${section}-item' data-section='${section}' data-folder='${folder}'>
-                      <a href='?section=${section}&project=${folder}' class='open-project'>
-                        <img src='${section}/${img}' alt='${folder}' />
-                      </a>
-                      ${txt ? `<p class='desc'>${folder}</p>` : ""}
-                    </div>
-                  `);
-              }
-          }
+  createHeader();
+  function createHeader(){
+      if(!$("#global-header").length){
+          $("body").prepend(`
+            <div id="global-header">
+              <span id='name'><a href='./'>yin xue</a></span>
+              <span id='menu'>
+                <a href='#' id='show-all'>all</a>&nbsp;&nbsp;
+                <a href='#' id='show-projects'>projects</a>&nbsp;&nbsp;
+                <a href='#' id='show-commissions'>commissions</a>&nbsp;&nbsp;
+                <a href='#' id='show-about'>about</a>
+              </span>
+            </div>
+          `);
       }
 
-      // Load about text
-      $("[data-file]").each(function(){
-          const el = $(this);
-          const file = el.data("file");
-          if(file && file.endsWith(".txt")){
-              $.get(file, function(t){ el.text(t); });
-          }
-      });
-
-      // Menu toggles with back button
-      $("#show-all").on("click", ()=>showSection("all"));
-      $("#show-projects").on("click", ()=>showSection("projects"));
-      $("#show-commissions").on("click", ()=>showSection("commissions"));
-      $("#show-about").on("click", ()=>showSection("about"));
-
-      // Clicking thumbnail loads single project
-      $(".open-project").on("click", function(e){
-          e.preventDefault();
-          const parent = $(this).closest(".grid-item");
-          const section = parent.data("section");
-          const folder = parent.data("folder");
-          loadProject(section, folder, true);
-      });
-
-      addFooter();
+      // menu handlers
+      $(document).on("click", "#show-all", ()=>showSection("all"));
+      $(document).on("click", "#show-projects", ()=>showSection("projects"));
+      $(document).on("click", "#show-commissions", ()=>showSection("commissions"));
+      $(document).on("click", "#show-about", ()=>showSection("about"));
   }
 
   // --------------------------------------------------------------------------
-  // Section filtering with back button
+  // Build home grid
+  // --------------------------------------------------------------------------
+  function buildHome(data){
+      $(".content").fadeOut(200, function(){
+          $(this).remove();
+
+          $("body").append("<div class='content grid' style='display:none'></div>");
+          const grid = $(".grid");
+
+          // Build items
+          for (const section in data){
+              const folders = data[section];
+              for (const folder in folders){
+                  const files = folders[folder];
+                  const img = files.find(f => /\.(png|jpe?g|gif)$/i.test(f));
+                  const txt = files.find(f => /\.txt$/i.test(f));
+
+                  if(section === "about"){
+                      grid.append(`
+                        <div class='grid-item about-item'>
+                          <div class='about-text' data-file='${section}/${txt || ""}'>Loading…</div>
+                        </div>
+                      `);
+                  } else if(img){
+                      grid.append(`
+                        <div class='grid-item ${section}-item' data-section='${section}' data-folder='${folder}'>
+                          <a href='?section=${section}&project=${folder}' class='open-project'>
+                            <img src='${section}/${img}' alt='${folder}' />
+                          </a>
+                          ${txt ? `<p class='desc'>${folder}</p>` : ""}
+                        </div>
+                      `);
+                  }
+              }
+          }
+
+          // about text
+          $("[data-file]").each(function(){
+              const el = $(this);
+              const file = el.data("file");
+              if(file && file.endsWith(".txt")){
+                  $.get(file, t=>el.text(t));
+              }
+          });
+
+          // click handlers
+          $(".open-project").on("click", function(e){
+              e.preventDefault();
+              const parent = $(this).closest(".grid-item");
+              const section = parent.data("section");
+              const folder = parent.data("folder");
+              loadProject(section, folder, true);
+          });
+
+          grid.fadeIn(300);
+          addFooter(grid);
+      });
+  }
+
+  // --------------------------------------------------------------------------
+  // Section filters + back button
   // --------------------------------------------------------------------------
   function showSection(section){
+      if(!$(".grid").length) return;
       $(".grid-item").hide();
-      if(section === "all"){ $(".grid-item").fadeIn(300); return; }
+      if(section === "all"){ $(".grid-item").fadeIn(300); $(".back-btn").remove(); return; }
       $("." + section + "-item").fadeIn(300);
 
-      // Add back button at top of grid
       if(!$(".back-btn").length){
-          $(".header").after("<div class='back-btn'><a href='#' id='back-all'>← back</a></div>");
+          $("#global-header").after("<div class='back-btn'><a href='#' id='back-all'>← back</a></div>");
           $("#back-all").on("click", function(e){
               e.preventDefault();
-              $(".back-btn").remove();
+              $(".back-btn").fadeOut(200, function(){ $(this).remove(); });
               showSection("all");
           });
       }
   }
 
   // --------------------------------------------------------------------------
-  // Build single project view
+  // Load single project
   // --------------------------------------------------------------------------
   function loadProject(section, folder, push){
-      $("body").empty().append("<div class='project-view'></div>");
+      $(".content").fadeOut(200, function(){
+          $(this).remove();
 
-      const files = manifest[section][folder];
+          $("body").append("<div class='content project-view' style='display:none'></div>");
+          const view = $(".project-view");
+          const files = manifest[section][folder];
 
-      $(".project-view").append(`
-        <div class='header'>
-          <span id='name'><a href='./'>yin xue</a></span>
-          <span id='menu'><a href='#' id='back-home'>← back</a></span>
-        </div>
-      `);
+          // update URL
+          if(push){
+              const newUrl = `?section=${encodeURIComponent(section)}&project=${encodeURIComponent(folder)}`;
+              history.pushState({section, folder}, "", newUrl);
+          }
 
-      // Update URL (deep link)
-      if(push){
-          const newUrl = `?section=${encodeURIComponent(section)}&project=${encodeURIComponent(folder)}`;
-          history.pushState({section, folder}, "", newUrl);
-      }
-
-      // Images
-      for(const f of files){
-          if(/\.(png|jpe?g|gif)$/i.test(f)){
-              $(".project-view").append(`
-                <div class='project-image'>
-                  <img src='${section}/${f}' alt='${folder}' />
-                </div>
+          // back button in header area
+          if(!$(".project-back").length){
+              $("#global-header").after(`
+                  <div class='project-back'><a href='#' id='back-home'>← back</a></div>
               `);
           }
-      }
 
-      // Text files
-      for(const f of files){
-          if(/\.txt$/i.test(f)){
-              $(".project-view").append(`
-                <div class='project-text' data-file='${section}/${f}'>Loading…</div>
-              `);
+          $("#back-home").off().on("click", function(e){
+              e.preventDefault();
+              history.pushState({}, "", "./");
+              $(".project-back").fadeOut(200, ()=>$(this).remove());
+              buildHome(manifest);
+          });
+
+          // images
+          for(const f of files){
+              if(/\.(png|jpe?g|gif)$/i.test(f)){
+                  view.append(`<div class='project-image'><img src='${section}/${f}' alt='${folder}' /></div>`);
+              }
           }
-      }
 
-      // Load text
-      $(".project-text").each(function(){
-          const el = $(this);
-          $.get(el.data("file"), t=>el.text(t));
+          // text files
+          for(const f of files){
+              if(/\.txt$/i.test(f)){
+                  view.append(`<div class='project-text' data-file='${section}/${f}'>Loading…</div>`);
+              }
+          }
+
+          $(".project-text").each(function(){
+              const el = $(this);
+              $.get(el.data("file"), t=>el.text(t));
+          });
+
+          addFooter(view);
+          view.fadeIn(400);
       });
-
-      // Back
-      $("#back-home").on("click", function(e){
-          e.preventDefault();
-          history.pushState({}, "", "./");
-          buildHome(manifest);
-      });
-
-      addFooter();
   }
 
   // --------------------------------------------------------------------------
-  // Handle browser back/forward
+  // Handle browser navigation
   // --------------------------------------------------------------------------
   window.onpopstate = function(event){
       if(event.state && event.state.section && event.state.folder){
@@ -192,10 +202,10 @@ $(function(){
   };
 
   // --------------------------------------------------------------------------
-  // Footer
+  // Footer helper
   // --------------------------------------------------------------------------
-  function addFooter(){
-      $(".grid, .project-view").append(`
+  function addFooter(target){
+      target.append(`
         <div class='footer'>
           <div class='row'>
             <div class='column'>
@@ -230,37 +240,51 @@ $(function(){
   src:url('https://dennisdebel.nl/2017/NimbusSanL-Reg.woff2') format('woff2'),
       url('https://dennisdebel.nl/2017/NimbusSanL-Reg.ttf') format('truetype');
 }
-body{font-family:"yolo";margin:0;padding:0}
+body{font-family:"yolo";margin:0;padding:0;background:#fff;transition:background .3s}
 a{color:black;text-decoration:none}
 pre,address{display:none}
 
-.grid{padding:8%;display:flex;flex-wrap:wrap}
-.grid-item{flex:1;padding-left:20px;margin-bottom:2vw;transition:opacity .3s}
-img{width:38vw;object-fit:cover}
-.project-view img{width:100%;max-width:800px;margin:auto;display:block;padding-bottom:1rem}
-
-.header{padding-left:20px;padding-bottom:10%;margin-top:-100px;width:96.5%}
-.back-btn{padding-left:20px;padding-bottom:1em}
+#global-header{
+  position:sticky;
+  top:0;
+  background:white;
+  z-index:999;
+  padding:1rem 2rem;
+  border-bottom:1px solid #eee;
+}
 #menu a{cursor:pointer}
 #menu a:hover{text-decoration:underline}
 span#name{float:left;font-size:1.3rem}
 span#menu{float:right;font-size:1.3rem}
 
-.project-text,.about-text{
-  max-width:600px;line-height:1.5em;font-size:14px;
-  padding:1em;margin:auto;
+.back-btn,.project-back{
+  padding:0.5em 2rem;
+  font-size:1rem;
 }
 
-.footer{padding-top:50px;padding-left:20px;width:96.5%;padding-bottom:3rem}
+.grid{padding:8%;display:flex;flex-wrap:wrap;justify-content:flex-start;align-content:flex-start;}
+.grid-item{flex:1 0 40%;padding:1rem;box-sizing:border-box;transition:opacity .3s}
+img{width:100%;object-fit:cover;display:block;border-radius:4px;transition:transform .3s ease}
+img:hover{transform:scale(1.02)}
+
+.project-view img{width:100%;max-width:800px;margin:auto;display:block;padding-bottom:1rem;opacity:0;animation:fadeIn 0.5s forwards;}
+@keyframes fadeIn {to{opacity:1;}}
+
+.project-text,.about-text{
+  max-width:600px;line-height:1.5em;font-size:14px;
+  padding:1em;margin:auto;opacity:0;animation:fadeIn 0.8s forwards;
+}
+
+.footer{padding-top:50px;padding-left:20px;width:96.5%;padding-bottom:3rem;opacity:0;animation:fadeIn 1s forwards;}
 .column{float:left;width:25%}
 .row:after{content:"";display:table;clear:both}
 
 @media (max-width:800px){
-  .grid{flex-direction:column;flex-wrap:nowrap;padding:1%}
-  .grid-item{padding-left:0}
+  .grid{flex-direction:column;padding:1rem;}
+  .grid-item{padding:0}
   img{width:100%}
   .column{width:100%}
-  .header,.footer{width:100%;padding-left:0}
+  #global-header{padding:1rem}
 }
 </style>
 </head>
