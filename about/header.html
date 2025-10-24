@@ -1,0 +1,623 @@
+<!-- 
+
+#### JAAC: JQuery Apache Autoindex CMS ####
+
+## About ##
+Forget databases, php, asp, node, static pages, directory listings. Enter 'JAAC', a fancy, dynamic, website generator using only javascript...and al its limitations. Let the client do the counting.
+
+## Prerequisites ##
+Step 0) Set the correct paths to jquery.js and blaze.js (see below)
+Step 1) Enable auto indexes in Apache for the relevant directory on yoursite.com + Make your directory browsable, in .htaccess put: 
+
+		Options +Indexes
+		IndexOptions IgnoreCase FancyIndexing FoldersFirst NameWidth=* DescriptionWidth=* SuppressHTMLPreamble
+		HeaderName header.html
+		IndexIgnore header.html footer.html favicon.ico .htaccess .ftpquota .DS_Store icons *.log *,v *,t .??* *~ *#
+
+Step 2) Upload this file (readme.html) and your '.htaccess' file on a webSERVER (or run one locally). Since it relies on apache dir listing...
+Step 3) Possibly chmod your content files to be readable as well....
+Step 4) DONT name this file index.html (itll destroy the auto index feature ;)))
+
+-->
+
+<html>
+
+<head>
+	<meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">  <!-- fix for mixed content blocks -->
+	<meta name="viewport" content="width=device-width, initial-scale=1">  <!-- scale on mobile browsers -->
+	<script src="https://dennisdebel.nl/2017/jquery.min.js"></script> <!-- set my path ! jquary framework -->
+	<script src="https://dennisdebel.nl/2017/blazy.min.js"></script> <!-- set my path ! lazy loading -->
+
+<!-- 	  video stuff 
+ 	<link href="../video-js.css" rel="stylesheet">
+ 	 <script src="https://vjs.zencdn.net/ie8/1.1.2/videojs-ie8.min.js"></script>
+  <script src="https://vjs.zencdn.net/6.6.3/video.js"></script> -->
+
+
+	<script type="text/javascript">
+
+		
+$(document).ready(function () {
+
+		var title; //define title a global var
+		var depth; //define global variable for folder depth
+		var root; // define document root global
+
+		// reconstruct the location of this file in order to read its subdirs and files
+		root = "https://"+window.location.host+window.location.pathname
+		var dir = root; //set location of THIS file (important)
+
+		//count slashes in url for correctly indexing folders in loop 1 
+		depth = (dir.match(/\//g) || []).length - 2; // minus two http protocol slashes
+
+		//var extension = ".JPG";
+		//var regexp = new Regexp("\.PNG|\.png|\.jpg|\.JPG|\.gif|\.MOV"); //define extentions ...doenst work :O now ugly:
+
+		//var valid = new RegExp('^.*\.(jpe?g|png|gif)$');
+		//var imageRegex = /([^s]+(?=.(jpg|gif|png)).2)/gm; 
+		var ext = {}; //file extention white list / loopable array
+		    ext[0]=".png";
+		    ext[1]=".jpg";
+		    ext[2]=".gif";
+			ext[3]=".html";
+			ext[4]=".txt";
+			ext[5]=".mp4"; //added video support
+			ext[6]=".mov"; //added video support
+	
+
+		var folders = []; //define global array for indexing folders on server
+			folders[0] = "/"; //folder is defined by (tailing?) slash
+
+	
+		//append container imgs, title, description and footer (back button), in reverse order ;)
+
+		//append container for images
+		$("body").append("<div id='imgs'></div>");  
+		//append container for title
+		$("body").append("<div id='title'></div>");  
+		//append container for description (html file)
+		$("body").append("<div id='description'></div>");  
+		//append container for video (more images?)
+		$("body").append("<div id='video'></div>");  
+		//append back button
+		$("body").append("<div id='backbutton'></div>");  
+	
+
+
+//loop 1
+		$.ajax({
+		    //This will retrieve the contents of the folder
+		    url: dir,
+		    success: function (data) {
+		    	
+//############  find folders #########################################################
+		    	$(data).find("a:contains(" + folders[0] + ")").each(function () { 
+		    		 var foldersFound = this.href.replace(window.location.host, "").replace("https://", ""); //find urls in returning ajax data and put found items in array
+		    		 
+		    		 var sections = foldersFound.split('/'); // split dir in folders/files
+
+		    		 folders.push(sections[depth]); //folders array now contains list of directories in root dir (including the root dir) 
+
+		    		   
+					//console.log(folders); //debug: list of folders found
+		    	});
+
+		    	
+			
+		    	if(folders.length > 1 ){ //if there are subfolders in our current dir, find the first (alphanumeric) image and link to folder
+ 		
+				var ii= 0; //only show page header once
+	//############ for each folder retrieve files #######################################
+
+	//loop 2				
+					folders.forEach(function(entry) { //for each folder (not ?! including root, does get alot of files, also parent dir....mmmm) request a list of white listed files
+	  
+						//$("body").append("<h1>" + entry + "</h1>");
+
+						$.ajax({
+				   			
+				   			url: entry,
+				    		success: function (data) {
+			    				var i = 0; //only show one image per project/folder
+							
+								$(data).find("a:contains(" + ext[0] + "),a:contains(" + ext[1] + "),a:contains(" + ext[2] + ")").each(function () {
+							            var filepath = this.href.replace(window.location.host, "").replace("https://", ""); //for each link found clean up the ahref
+							            var sections = filepath.split('/'); // split dir in folders/files
+							            var dir = sections[depth-2]; //assign folder locations
+							            var file = sections[depth] //assign file locations (depth of content folder from server root)
+							          	title = entry.replace(dir,""); //construct aesthetic title for html use
+										
+							
+										while (ii < 1)  // page header; title + back button	
+										{						
+											$("body").append("<span class='txt'>dennisdebel.nl, dennisdebel@gmail.com, +31624106201 <br><a href='https://dennisdebel.nl/'>works</a> <a href='https://dennisdebel.nl/2017/about/'>about</a> <a href='https://dennisdebel.nl/2017/publications/'>publications</a> <a href='https://dennisdebel.nl/2017/shows'>shows</a> </span><br><br><br>");
+											ii++;
+										}
+							
+							
+							       		while (i < 1)  //only show one image per project/folder
+							       			{ 
+									            $("body").append(
+									            	"<a href='"+ entry +"'><div class='project'><img class='b-lazy' src='data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==' data-src='"+ entry +"/"+ file + "' alt='"+ file + "'/></div><span>" + title + "</span></a>"); //put image on page 
+									            i++; //only show one image per project/folder
+									        
+							        			}
+							        		});
+					        				
+					        	var bLazy = new Blazy(); //lazy loading...does it werk?!
+
+
+
+
+	    					} 
+						});
+				});  
+			} else { 
+
+	//############ retrieve and parse all files in single folder/project #######################################
+
+					//if there are no subfolders in our current location just dump all the white-listed files
+			    	//find files in root (as per defined extentions)
+					
+					i=0;//page header and backbutton counter
+			
+			        $(data).find("a:contains(" + ext[0] + "),a:contains(" + ext[1] + "),a:contains(" + ext[2] + "),a:contains(" + ext[3] + "),a:contains(" + ext[4] + "),a:contains(" + ext[5] + "),a:contains(" + ext[6] + ")").each(function () {
+			            var filepath = this.href.replace(window.location.host, "").replace("https://", ""); //find urls in returning ajax data and filter/ get url of current dir
+			            var sections = filepath.split('/'); // split dir in folders/files
+			            var dir = sections[depth-2]; //assign folder locations
+			            var file = sections[depth] //assign file locations
+			          	console.log(file); //debug file list
+
+			           	while(i < 1){
+							$("#title").append(sections[depth-1]); //echo foldername as page title after images, before decscription
+					 		$("#backbutton").after("<p id='backbutton'><a href='../'>back</a></p>"); //insert back button						
+							i++; // stop the while loop, only echo title and back button once
+						}
+
+						
+					
+						if(file.split('.').pop()!=='html' && file.split('.').pop()!=='txt' && file.split('.').pop()!=='mov' && file.split('.').pop()!=='mp4')
+						{ //if file extention is not html or text or video (thus white listed image), echo it 
+													
+							
+
+		           			$("#imgs").append(
+		            			"<a href='" + filepath + "'><div class='img_wrapper lazy_load single'><img src='" + file + "'><p class='filename'>"+file.replace(/\.[^/.]+$/, "").replace(/_/g, " ")+"</p></div></a>"); //put image on page (later: put list of files in array and loop over them...) + echo filename as description (without extention and underscores replaced by space)
+							
+		           		
+
+
+						} else { //any other file extention (if whitelisted) gets echoed
+							
+							switch(file.split('.').pop()){
+
+								case 'txt':
+								 $("#description").load(file); // insert html/txt content
+    							 break;
+    							case 'mp4':
+    							case 'mov':
+    							 $("#video").append("<video id='videoContent' width='100%' height='100%' controls><source src='" + file + "' type='video/mp4'>Your browser does not support the video tag.</video>");
+
+    							  // $("#video").append("<video id='my-video' class='video-js' controls preload='auto' width='640' height='264'  data-setup='{}'> <source src='" + file + "' type='video/mp4'> <p class='vjs-no-js'> To view this video please enable JavaScript, and consider upgrading to a web browser that <a href='https://videojs.com/html5-video-support/' target='_blank'>supports HTML5 video</a></p></video>");
+    							 break;
+							}
+
+						}
+					});
+
+				}
+			  
+
+		    }
+		});
+
+}); 
+	</script>
+	<style type="text/css">
+	@media screen{
+		body{
+			text-align:center;	
+			overflow-x: hidden;
+		}
+		
+	 	a{color:black;}
+
+		div.project{
+			position: relative;
+			 //padding:20px;
+   			width: 100%; /* for IE 6 */
+   			display: inline;
+			//text-align:center;
+			//border:1px solid blue;
+			//padding:20px;
+
+		}
+		div.single{
+			
+			 padding-bottom:10px;
+   			
+		}
+		
+		img{
+			position: relative;
+			//border:10px solid #66ffcc;
+			width:90%;
+		}
+		
+		
+		pre{display:none;} /*hides apache 'auto index' data...which is actually nice tho...*/
+		//pre{opacity: 0.3;
+		//font-size: 5px;
+		//position: fixed;} /*hides apache 'auto index' data...which is actually nice tho...*/
+
+		address{display:none;} /*hides apache 'address' data...which is actually nice tho...*/
+
+		a span{
+			font-family: sans-serif;
+			//text-align: center;
+			//font-style: italic;
+			font-size: 10px;
+			text-decoration: none;
+			display:inline;
+			position: relative;
+			z-index: 10;
+			color: black;
+			top: 20px; 
+		   	left: -10; 
+		   	width: 100%; 
+			padding:20px;
+			padding-bottom:50px;
+		/* stretch font */
+		   	display:inline-block;
+			transform:scale(2,3); /* W3C */
+			-webkit-transform:scale(2,3); /* Safari and Chrome */
+			-moz-transform:scale(2,3); /* Firefox */
+			-ms-transform:scale(2,3); /* IE 9 */
+			-o-transform:scale(2,3); /* Opera */
+			/* Rest Of CSS Code Here*/
+		}
+
+		
+		span.txt{
+			font-family: sans-serif;
+			text-align: center;
+			//font-style: italic;
+			font-size: 5px;
+			text-decoration: none;
+			//display:inline;
+			position: absolute;
+			z-index: 10;
+			color: black;
+			//top: -200px; 
+		   	left: -1px; 
+		   	width: 90%; 
+
+		/* stretch font */
+		   	display:inline-block;
+			transform:scale(2,3); /* W3C */
+			-webkit-transform:scale(2,3); /* Safari and Chrome */
+			-moz-transform:scale(2,3); /* Firefox */
+			-ms-transform:scale(2,3); /* IE 9 */
+			-o-transform:scale(2,3); /* Opera */
+			/* Rest Of CSS Code Here*/
+		}
+
+		div#title{
+		
+			text-align: center;
+			width: 40%;
+			margin-top:50px;
+			margin-bottom:50px;
+			 margin-left: auto ;
+ 			 margin-right: auto ;
+		/* stretch font */
+		   	//display:inline-block;
+			transform:scale(2,3); /* W3C */
+			-webkit-transform:scale(2,3); /* Safari and Chrome */
+			-moz-transform:scale(2,3); /* Firefox */
+			-ms-transform:scale(2,3); /* IE 9 */
+			-o-transform:scale(2,3); /* Opera */
+		
+			//border:1px solid red;
+
+			font-family: sans-serif;
+			font-size: 10px;
+			text-decoration: none;
+			z-index: 10;
+			color: black;
+		}
+
+
+		.filename{ /*image captions*/
+			position:relative;
+			font-family: sans-serif;
+			font-size: 10px;
+			text-decoration: none;
+			z-index: 10;
+			color: black;
+			margin-left:-140px;
+			margin-top: -160px;
+			float:left;
+			text-align: left;
+			width:300px;
+
+			/* Safari */
+			-webkit-transform: rotate(-90deg);
+
+			/* Firefox */
+			-moz-transform: rotate(-90deg);
+
+			/* IE */
+			-ms-transform: rotate(-90deg);
+
+			/* Opera */
+			-o-transform: rotate(-90deg);
+
+			/* Internet Explorer */
+			filter: progid:DXImageTransform.Microsoft.BasicImage(rotation=3);
+
+		}
+
+		#description{
+			 margin-left: auto ;
+ 			 margin-right: auto ;
+			width:50%;
+			padding: auto;
+			font-family:'Helvetica Neue', 'Helvetica', sans-serif;
+			font-size: 12px;
+			line-height: 1.4em;
+			text-align: left;
+			text-decoration: none;
+			//display:inline;
+			//position: absolute;
+			z-index: 10;
+			color: black;
+			//top: -200px; 
+		   //	left: -100; 
+		   //	width: 100%; 
+		}
+		#video{
+			width:90%;
+			margin: 5%;
+		}
+		#backbutton{
+			padding-top: 60px;
+			
+			width: 99%;
+			font-family: sans-serif;
+			text-align: left;
+			//font-style: italic;
+			font-size: 15px;
+			text-decoration: none;
+			z-index: 10;
+			color: black;
+			text-align: center;
+		}
+		#backbutton a{
+			color:black;
+			text-decoration: none;
+		}
+		#backbutton a:hover{
+			color:black;
+			text-decoration: underline;
+		}
+}
+		@media all and (max-width: 800px){
+			#description{ 
+				width:90%;
+
+			}
+		}
+
+	@media print {
+   				body{
+			text-align:center;	
+			overflow-x: hidden;
+		}
+		
+	 	a{color:black;}
+
+		div.project{
+			position: relative;
+			 //padding:20px;
+   			width: 100%; /* for IE 6 */
+   			display: inline;
+			//text-align:center;
+			//border:1px solid blue;
+			//padding:20px;
+
+		}
+		div.single{
+			
+			 padding-bottom:10px;
+   			
+		}
+		
+		img{
+			position: relative;
+			//border:10px solid #66ffcc;
+			width:90%;
+		}
+		
+		
+		pre{display:none;} /*hides apache 'auto index' data...which is actually nice tho...*/
+		//pre{opacity: 0.3;
+		//font-size: 5px;
+		//position: fixed;} /*hides apache 'auto index' data...which is actually nice tho...*/
+
+		address{display:none;} /*hides apache 'address' data...which is actually nice tho...*/
+
+		a span{
+			font-family: sans-serif;
+			//text-align: center;
+			//font-style: italic;
+			font-size: 10px;
+			text-decoration: none;
+			display:inline;
+			position: relative;
+			z-index: 10;
+			color: black;
+			top: 20px; 
+		   	left: -10; 
+		   	width: 100%; 
+			padding:20px;
+			padding-bottom:50px;
+		/* stretch font */
+		   	display:inline-block;
+			transform:scale(2,3); /* W3C */
+			-webkit-transform:scale(2,3); /* Safari and Chrome */
+			-moz-transform:scale(2,3); /* Firefox */
+			-ms-transform:scale(2,3); /* IE 9 */
+			-o-transform:scale(2,3); /* Opera */
+			/* Rest Of CSS Code Here*/
+		}
+
+		
+		span.txt{
+			font-family: sans-serif;
+			text-align: center;
+			//font-style: italic;
+			font-size: 5px;
+			text-decoration: none;
+			//display:inline;
+			position: absolute;
+			z-index: 10;
+			color: black;
+			//top: -200px; 
+		   	left: -1px; 
+		   	width: 90%; 
+
+		/* stretch font */
+		   	display:inline-block;
+			transform:scale(2,3); /* W3C */
+			-webkit-transform:scale(2,3); /* Safari and Chrome */
+			-moz-transform:scale(2,3); /* Firefox */
+			-ms-transform:scale(2,3); /* IE 9 */
+			-o-transform:scale(2,3); /* Opera */
+			/* Rest Of CSS Code Here*/
+		}
+
+		div#title{
+		
+			text-align: center;
+			width: 40%;
+			margin-top:50px;
+			margin-bottom:50px;
+			 margin-left: auto ;
+ 			 margin-right: auto ;
+		/* stretch font */
+		   	//display:inline-block;
+			transform:scale(2,3); /* W3C */
+			-webkit-transform:scale(2,3); /* Safari and Chrome */
+			-moz-transform:scale(2,3); /* Firefox */
+			-ms-transform:scale(2,3); /* IE 9 */
+			-o-transform:scale(2,3); /* Opera */
+		
+			//border:1px solid red;
+
+			font-family: sans-serif;
+			font-size: 10px;
+			text-decoration: none;
+			z-index: 10;
+			color: black;
+		}
+
+
+		.filename{ /*image captions*/
+			position:relative;
+			font-family: sans-serif;
+			font-size: 10px;
+			text-decoration: none;
+			z-index: 10;
+			color: black;
+			margin-left:-140px;
+			margin-top: -160px;
+			float:left;
+			text-align: left;
+			width:300px;
+
+			/* Safari */
+			-webkit-transform: rotate(-90deg);
+
+			/* Firefox */
+			-moz-transform: rotate(-90deg);
+
+			/* IE */
+			-ms-transform: rotate(-90deg);
+
+			/* Opera */
+			-o-transform: rotate(-90deg);
+
+			/* Internet Explorer */
+			filter: progid:DXImageTransform.Microsoft.BasicImage(rotation=3);
+
+		}
+
+		#description{
+			 margin-left: auto ;
+ 			 margin-right: auto ;
+			width:50%;
+			padding: auto;
+			font-family:'Helvetica Neue', 'Helvetica', sans-serif;
+			font-size: 12px;
+			line-height: 1.4em;
+			text-align: left;
+			text-decoration: none;
+			//display:inline;
+			//position: absolute;
+			z-index: 10;
+			color: black;
+			//top: -200px; 
+		   //	left: -100; 
+		   //	width: 100%; 
+		}
+		#backbutton{
+			padding-top: 60px;
+			
+			width: 99%;
+			font-family: sans-serif;
+			text-align: left;
+			//font-style: italic;
+			font-size: 15px;
+			text-decoration: none;
+			z-index: 10;
+			color: black;
+			text-align: center;
+		}
+		#backbutton a{
+			color:black;
+			text-decoration: none;
+		}
+		#backbutton a:hover{
+			color:black;
+			text-decoration: underline;
+		}
+}
+
+	</style>
+</head>
+
+
+<body>
+</body>
+<!-- <script type="text/javascript">
+	$(document).ready(function(){
+
+
+
+
+								    console.log("no imgs");
+			             		var imgCount = $('.img_wrapper').length;
+			             		if (imgCount == 0 ){
+			             			$("body").css( "height", "10px" );
+			             			console.log("no imgs");
+
+			             		} else {
+			             			$("body").css( "height", "100%" );
+			             		}
+			             		console.log("imgcount " +imgCount);
+
+
+	});
+</script> -->
+</html>
