@@ -53,6 +53,7 @@ $(function(){
   }
 
   // ---------- Header ----------
+// ---------- Header ----------
   function createHeader(){
     if(!$("#global-header").length){
       $("body").prepend(`
@@ -67,14 +68,39 @@ $(function(){
       `);
     }
 
-    // Rebind cleanly (namespaced)
+    // Clean rebind with navigation awareness
     $(document)
       .off("click.nav")
-      .on("click.nav", "#show-all",        e => { e.preventDefault(); showSection("all"); })
-      .on("click.nav", "#show-projects",   e => { e.preventDefault(); showSection("projects"); })
-      .on("click.nav", "#show-commissions",e => { e.preventDefault(); showSection("commissions"); })
-      .on("click.nav", "#show-about",      e => { e.preventDefault(); showSection("about"); });
+      .on("click.nav", "#show-all", function(e){
+        e.preventDefault();
+        history.pushState({}, "", "./");
+        $(".content, .project-back, .back-btn").remove();
+        renderHome();
+        setTimeout(()=>showSection("all"), 200);
+      })
+      .on("click.nav", "#show-projects", function(e){
+        e.preventDefault();
+        history.pushState({}, "", "./");
+        $(".content, .project-back, .back-btn").remove();
+        renderHome();
+        setTimeout(()=>showSection("projects"), 200);
+      })
+      .on("click.nav", "#show-commissions", function(e){
+        e.preventDefault();
+        history.pushState({}, "", "./");
+        $(".content, .project-back, .back-btn").remove();
+        renderHome();
+        setTimeout(()=>showSection("commissions"), 200);
+      })
+      .on("click.nav", "#show-about", function(e){
+        e.preventDefault();
+        history.pushState({}, "", "./");
+        $(".content, .project-back, .back-btn").remove();
+        renderHome();
+        setTimeout(()=>showSection("about"), 200);
+      });
   }
+
 
   // ---------- Home (Grid) ----------
   function renderHome(){
@@ -260,7 +286,19 @@ span#menu{float:right;font-size:1.3rem}
 }
 
 .grid{padding:8%;display:flex;flex-wrap:wrap;justify-content:flex-start;align-content:flex-start;}
-.grid-item{flex:1 0 40%;padding:1rem;box-sizing:border-box;transition:opacity .3s}
+.grid-item {
+  display: flex;
+  flex-direction: column;   /* stack image and caption vertically */
+  align-items: flex-start;  /* left-align text under image */
+  flex: 1 0 40%;
+  padding: 1rem;
+  box-sizing: border-box;
+}
+.grid-item .desc {
+  margin-top: 0.5rem;     /* space between image and text */
+  font-size: 0.9rem;
+  line-height: 1.2;
+}
 img{width:100%;object-fit:cover;display:block;border-radius:4px;transition:transform .3s ease}
 img:hover{transform:scale(1.02)}
 
