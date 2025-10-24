@@ -2,36 +2,41 @@
 import { promises as fs } from "fs";
 import path from "path";
 
-const ROOTS = ["projects", "commissions"];
+const ROOTS = ["projects", "commissions", "about"];
 const OUT_FILE = "manifest.json";
 
-async function walk(dir) {
-  const entries = await fs.readdir(dir, { withFileTypes: true });
-  const files = [];
-
-  for (const entry of entries) {
-    const fullPath = path.join(dir, entry.name);
-    if (entry.isDirectory()) {
-      const sub = await walk(fullPath);
-      files.push(...sub);
-    } else if (/\.(png|jpe?g|gif|txt)$/i.test(entry.name)) {
-      files.push(fullPath);
-    }
+async function safeReaddir(dir) {
+  try {
+    return await fs.readdir(dir, { withFileTypes: true });
+  } catch (err) {
+    if (err.code === "ENOENT") return []; // folder missing
+    throw err;
   }
-  return files;
 }
 
 async function main() {
   const manifest = {};
+
   for (const root of ROOTS) {
-    const folders = await fs.readdir(root, { withFileTypes: true });
+    const folders = await safeReaddir(root);
     manifest[root] = {};
 
+    if (folders.length === 0) {
+      // If root has only files (e.g. about/text.txt)
+      const files = (await safeReaddir(root === "." ? "." : root))
+        .filter(f => f.isFile && /\.(png|jpe?g|gif|txt)$/i.test(f.name))
+        .map(f => f.name);
+      if (files.length) manifest[root]["."] = files;
+      continue;
+    }
+
+    // Otherwise: subfolders
     for (const folder of folders.filter(f => f.isDirectory())) {
       const subdir = path.join(root, folder.name);
-      const files = (await fs.readdir(subdir))
-        .filter(f => /\.(png|jpe?g|gif|txt)$/i.test(f))
-        .map(f => `${folder.name}/${f}`);
+      const files = (await safeReaddir(subdir))
+        .filter(f => f.isFile && /\.(png|jpe?g|gif|txt)$/i.test(f.name))
+        .map(f => `${folder.name}/${f.name}`);
+
       if (files.length) manifest[root][folder.name] = files;
     }
   }
@@ -40,4 +45,7 @@ async function main() {
   console.log(`✅ Wrote ${OUT_FILE}`);
 }
 
-main();
+main().catch(err => {
+  console.error("❌ Build failed:", err);
+  process.exit(1);
+});
