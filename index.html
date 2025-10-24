@@ -1,422 +1,147 @@
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
+<title>yin xue</title>
 <script src="./jquery.min.js"></script>
 
-<script type="text/javascript">
-$(document).ready(function () {
-    // Configuration
-    const TARGET_FOLDERS = ['projects', 'commissions'];
-    const IMAGE_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.gif', '.JPG', '.JPEG'];
-    const TEXT_EXTENSIONS = ['.txt', '.md'];
+<script>
+$(function(){
 
-    // State
-    let allItems = [];
-    let pendingRequests = 0;
+  // ---- Load manifest --------------------------------------------------------
+  $.getJSON("manifest.json", function(manifest){
+      console.log("Loaded manifest:", manifest);
+      buildHome(manifest);
+  }).fail(function(){
+      $("body").append("<p style='color:red'>manifest.json not found</p>");
+  });
 
-    // Utility functions
-    function cleanPath(path) {
-        return path.replace(/\/+/g, '/').replace(/^\.\//, '').replace(/^\//, '').replace(/([^\/])$/, '$1/');
-    }
+  // ---- Build page -----------------------------------------------------------
+  function buildHome(data){
+      $("body").append("<div class='grid'></div>");
 
-    function getExtension(filename) {
-        return filename.slice((filename.lastIndexOf('.') - 1 >>> 0) + 1).toLowerCase();
-    }
+      // --- Header/menu once --------------------------------------------------
+      $(".grid").append(`
+        <div class='header'>
+          <span id='name'><a href='./'>yin xue</a></span>
+          <span id='menu'>
+            <a href='#' id='show-all'>all</a>&nbsp;&nbsp;
+            <a href='#' id='show-projects'>projects</a>&nbsp;&nbsp;
+            <a href='#' id='show-commissions'>commissions</a>&nbsp;&nbsp;
+            <a href='#' id='show-about'>about</a>
+          </span>
+        </div>
+      `);
 
-    function isImageFile(filename) {
-        const ext = getExtension(filename);
-        return IMAGE_EXTENSIONS.includes('.' + ext);
-    }
+      // --- Build sections ----------------------------------------------------
+      for (const section in data){
+          const folders = data[section];
+          for (const folder in folders){
+              const files = folders[folder];
+              const img = files.find(f => /\.(png|jpe?g|gif)$/i.test(f));
+              const txt = files.find(f => /\.txt$/i.test(f));
 
-    function isTextFile(filename) {
-        const ext = getExtension(filename);
-        return TEXT_EXTENSIONS.includes('.' + ext);
-    }
+              const folderPath = folder === "." ? `${section}/` : `${section}/${folder}/`;
 
-    // Scan directory for files and subfolders
-    async function scanDirectory(path) {
-        return new Promise((resolve, reject) => {
-            $.ajax({
-                url: cleanPath(path),
-                success: function(data) {
-                    const files = [];
-                    const subfolders = [];
-                    
-                    $(data).find('a[href]').each(function() {
-                        const href = $(this).attr('href');
-                        // Skip parent directory links and self references
-                        if (href === '../' || href === './' || href === '/') return;
-                        
-                        if (href.endsWith('/')) {
-                            // It's a folder
-                            subfolders.push(cleanPath(path + href));
-                        } else {
-                            // It's a file
-                            files.push({
-                                name: href,
-                                path: cleanPath(path + href),
-                                folder: path
-                            });
-                        }
-                    });
-                    
-                    resolve({ files, subfolders });
-                },
-                error: function(xhr, status, error) {
-                    console.error('Error scanning directory:', path, error);
-                    resolve({ files: [], subfolders: [] });
-                }
-            });
-        });
-    }
+              if(section === "about"){
+                  // text-only page
+                  $(".grid").append(`
+                    <div class='grid-item about-item'>
+                      <div class='about-text' data-file='${folderPath + txt}'>Loading…</div>
+                    </div>
+                  `);
+              } else if(img){
+                  $(".grid").append(`
+                    <div class='grid-item ${section}-item'>
+                      <a href='${folderPath}'>
+                        <img src='${folderPath + img}' alt='${folder}' />
+                      </a>
+                      ${txt ? `<p class='desc' data-file='${folderPath + txt}'>${folder}</p>` : ""}
+                    </div>
+                  `);
+              }
+          }
+      }
 
-    // Get description from text file
-    async function getDescription(folderPath) {
-        try {
-            const { files } = await scanDirectory(folderPath);
-            const textFile = files.find(file => isTextFile(file.name));
-            
-            if (textFile) {
-                const response = await fetch(textFile.path);
-                return await response.text();
-            }
-        } catch (error) {
-            console.error('Error reading description:', error);
-        }
-        return null;
-    }
+      // --- Load .txt contents asynchronously --------------------------------
+      $("[data-file]").each(function(){
+          const el = $(this);
+          const file = el.data("file");
+          if(file.endsWith(".txt")){
+              $.get(file, function(t){ el.text(t); });
+          }
+      });
 
-    // Get first image from folder
-    function getFirstImage(files) {
-        return files.find(file => isImageFile(file.name));
-    }
+      // --- Menu toggles ------------------------------------------------------
+      $("#show-all").on("click", ()=>$(".grid-item").fadeIn(300));
+      $("#show-projects").on("click", ()=>{$(".grid-item").hide(); $(".projects-item").fadeIn(300);});
+      $("#show-commissions").on("click", ()=>{$(".grid-item").hide(); $(".commissions-item").fadeIn(300);});
+      $("#show-about").on("click", ()=>{$(".grid-item").hide(); $(".about-item").fadeIn(300);});
 
-    // Build the homepage grid
-    async function buildHomeGrid() {
-        console.log('Building home grid...');
-        
-        // Create grid container
-        $('body').append('<div class="grid"></div>');
-        
-        // Add header
-        $('.grid').append(`
-            <div class="header">
-                <span id="name"><a href="./">yin xue</a></span>
-                <span id="menu">
-                    <a href="#" id="show-all">all</a> &nbsp;&nbsp;
-                    <a href="#" id="show-projects">projects</a> &nbsp;&nbsp;
-                    <a href="#" id="show-commissions">commissions</a> &nbsp;&nbsp;
-                    <a href="./about/">about</a>
-                </span>
+      // --- Footer ------------------------------------------------------------
+      $(".grid").append(`
+        <div class='footer'>
+          <div class='row'>
+            <div class='column'>
+              <h1>links</h1>
+              <a href='https://www.youtube.com/user/danosdotnl' target='_blank'>instagram</a><br>
+              <a href='https://github.com/dennisdebel' target='_blank'>rednote</a><br>
+              <a href='https://soundcloud.com/errorpage' target='_blank'>soundcloud</a>
             </div>
-        `);
-
-        // Process each target folder
-        for (const folder of TARGET_FOLDERS) {
-            console.log(`Processing ${folder}...`);
-            
-            try {
-                const { subfolders } = await scanDirectory(folder + '/');
-                
-                // Process each subfolder within projects/commissions
-                for (const subfolder of subfolders) {
-                    try {
-                        const { files } = await scanDirectory(subfolder);
-                        const firstImage = getFirstImage(files);
-                        
-                        if (firstImage) {
-                            const description = await getDescription(subfolder);
-                            const folderName = subfolder.split('/').filter(Boolean).pop();
-                            
-                            allItems.push({
-                                type: folder,
-                                path: subfolder,
-                                image: firstImage.path,
-                                title: folderName,
-                                description: description
-                            });
-                            
-                            // Add to grid immediately
-                            $('.grid').append(`
-                                <div class="grid-item ${folder}-item" data-type="${folder}">
-                                    <a href="${subfolder}">
-                                        <img src="${firstImage.path}" alt="${folderName}" />
-                                        ${description ? `<div class="description">${description}</div>` : ''}
-                                    </a>
-                                </div>
-                            `);
-                        }
-                    } catch (error) {
-                        console.error(`Error processing subfolder ${subfolder}:`, error);
-                    }
-                }
-            } catch (error) {
-                console.error(`Error processing ${folder}:`, error);
-            }
-        }
-
-        // Add filter functionality
-        $('#show-all').on('click', function(e) {
-            e.preventDefault();
-            $('.grid-item').fadeIn(300);
-        });
-
-        $('#show-projects').on('click', function(e) {
-            e.preventDefault();
-            $('.grid-item').fadeOut(300);
-            $('.projects-item').fadeIn(300);
-        });
-
-        $('#show-commissions').on('click', function(e) {
-            e.preventDefault();
-            $('.grid-item').fadeOut(300);
-            $('.commissions-item').fadeIn(300);
-        });
-
-        // Add footer after content is loaded
-        addFooter();
-    }
-
-    // Single project view
-    async function buildProjectView() {
-        const currentPath = window.location.pathname;
-        const pathSegments = currentPath.split('/').filter(Boolean);
-        
-        // Check if we're in a project subfolder (not in projects/commissions root)
-        if (pathSegments.length >= 2 && TARGET_FOLDERS.includes(pathSegments[0])) {
-            console.log('Building project view for:', currentPath);
-            
-            try {
-                const { files } = await scanDirectory('./');
-                const description = await getDescription('./');
-                
-                // Add back button
-                $('body').append(`
-                    <div id="backbutton">
-                        <a href="../">← back</a>
-                    </div>
-                `);
-                
-                // Add title
-                if (pathSegments.length > 1) {
-                    $('#backbutton').after(`<div id="title">${pathSegments[1]}</div>`);
-                }
-                
-                // Add description
-                if (description) {
-                    $('body').append(`<div id="description">${description}</div>`);
-                }
-                
-                // Add images
-                $('body').append('<div id="gallery"></div>');
-                
-                files.forEach(file => {
-                    if (isImageFile(file.name)) {
-                        $('#gallery').append(`
-                            <div class="image-item">
-                                <img src="${file.path}" alt="${file.name}" />
-                                <div class="filename">${file.name.replace(/\.[^/.]+$/, "").replace(/_/g, " ")}</div>
-                            </div>
-                        `);
-                    } else if (isTextFile(file.name)) {
-                        // Already handled as description
-                    } else if (file.name.match(/\.(mp4|mov)$/i)) {
-                        $('#gallery').append(`
-                            <div class="video-item">
-                                <video controls>
-                                    <source src="${file.path}" type="video/mp4">
-                                    Your browser does not support the video tag.
-                                </video>
-                            </div>
-                        `);
-                    }
-                });
-                
-                return;
-            } catch (error) {
-                console.error('Error building project view:', error);
-            }
-        }
-        
-        // If not in a project subfolder, build home grid
-        buildHomeGrid();
-    }
-
-    function addFooter() {
-        $('.grid').append(`
-            <div class="footer">
-                <div class="row">
-                    <div class="column">
-                        <h1>links</h1>
-                        <a href="https://www.instagram.com" target="_blank">instagram</a><br>
-                        <a href="https://github.com" target="_blank">github</a><br>
-                        <a href="https://soundcloud.com" target="_blank">soundcloud</a>
-                    </div>
-                    <div class="column">
-                        <h1>contact</h1>
-                        yin xue<br>email@example.com<br>+1234567890
-                    </div>
-                    <div class="column">
-                        <h1>legal</h1>
-                        Your legal information<br>goes here
-                    </div>
-                    <div class="column"></div>
-                </div>
+            <div class='column'>
+              <h1>contact</h1>
+              dennis de bel<br>+31624106201<br>dennisdebel@gmail.com
             </div>
-        `);
-    }
+            <div class='column'>
+              <h1>legal</h1>
+              IBAN/SEPA: NL28ABNA06123<br>
+              BIC: ABNAN<br>
+              TAX: NL182813B01<br>
+              Chamber of Commerce: 2448402
+            </div>
+            <div class='column'></div>
+          </div>
+        </div>
+      `);
+  }
 
-    // Initialize based on current path
-    function init() {
-        const path = window.location.pathname;
-        const segments = path.split('/').filter(Boolean);
-        
-        if (segments.length === 0 || (segments.length === 1 && segments[0] === 'index.html')) {
-            // We're at the root - build home grid
-            buildHomeGrid();
-        } else if (TARGET_FOLDERS.includes(segments[0]) && segments.length > 1) {
-            // We're in a project subfolder - build project view
-            buildProjectView();
-        } else {
-            // We're in some other section (like about) - let the server handle it
-            buildHomeGrid();
-        }
-    }
-
-    // Start the application
-    init();
 });
 </script>
 
-<style type="text/css">
+<style>
 @font-face {
-    font-family: 'yolo';
-    src: url('https://dennisdebel.nl/2017/NimbusSanL-Reg.woff2') format('woff2'),
-         url('https://dennisdebel.nl/2017/NimbusSanL-Reg.ttf') format('truetype');
+  font-family:'yolo';
+  src:url('./NimbusSanL-Reg.woff2') format('woff2'),
+      url('./NimbusSanL-Reg.ttf') format('truetype');
 }
-@font-face {
-    font-family: 'yoloThick';
-    src: url('https://dennisdebel.nl/2017/NimbusSanL-Bol.woff2') format('woff2'),
-         url('https://dennisdebel.nl/2017/NimbusSanL-Bol.ttf') format('truetype');
-}
+body{font-family:"yolo";margin:0;padding:0}
+a{color:black;text-decoration:none}
+pre,address{display:none}
 
-body { 
-    font-family: "yolo"; 
-    margin: 0; 
-    padding: 0; 
-    background: white;
-}
-a { color: black; text-decoration: none; }
-a:hover { text-decoration: underline; }
+.grid{padding:8%;display:flex;flex-wrap:wrap}
+.grid-item{flex:1;padding-left:20px;margin-bottom:2vw;transition:opacity .3s}
+img{width:38vw;object-fit:cover}
 
-/* Grid styles */
-.grid {
-    padding: 8%;
-    display: flex;
-    flex-wrap: wrap;
-}
-.grid-item {
-    flex: 1;
-    padding-left: 20px;
-    margin-bottom: 2vw;
-    transition: opacity 0.3s ease;
-}
-.grid-item img {
-    width: 100%;
-    height: 300px;
-    object-fit: cover;
-    display: block;
-}
-.grid-item .description {
-    margin-top: 10px;
-    font-size: 14px;
-    line-height: 1.4;
-    color: #666;
-}
+.header{padding-left:20px;padding-bottom:10%;margin-top:-100px;width:96.5%}
+#menu a{cursor:pointer}
+#menu a:hover{text-decoration:underline}
+span#name{float:left;font-size:1.3rem}
+span#menu{float:right;font-size:1.3rem}
 
-/* Header */
-.header { 
-    padding-left: 20px;
-    padding-bottom: 10%;
-    margin-top: -100px;
-    width: 96.5%;
-}
-span#name { float: left; font-size: 1.3rem; }
-span#menu { float: right; font-size: 1.3rem; }
-#menu a { cursor: pointer; }
+.footer{padding-top:50px;padding-left:20px;width:96.5%;padding-bottom:3rem}
+.column{float:left;width:25%}
+.row:after{content:"";display:table;clear:both}
 
-/* Single project view */
-#backbutton { 
-    padding: 20px; 
-    font-size: 1.2rem;
-}
-#title {
-    text-align: center;
-    font-size: 2rem;
-    margin: 40px 0;
-    font-family: 'yoloThick';
-}
-#description {
-    max-width: 600px;
-    margin: 0 auto 40px;
-    padding: 0 20px;
-    line-height: 1.6;
-}
-#gallery {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 0 20px;
-}
-.image-item, .video-item {
-    margin-bottom: 40px;
-}
-.image-item img, .video-item video {
-    width: 100%;
-    height: auto;
-    display: block;
-}
-.filename {
-    margin-top: 10px;
-    font-size: 14px;
-    color: #666;
-    text-align: center;
-}
+.about-text{max-width:600px;line-height:1.5em;font-size:14px;padding:1em}
 
-/* Footer */
-.footer { 
-    padding-top: 50px;
-    padding-left: 20px;
-    width: 96.5%;
-    padding-bottom: 3rem;
-    border-top: 1px solid #eee;
-    margin-top: 50px;
-}
-.column { float: left; width: 25%; }
-.row:after { content: ""; display: table; clear: both; }
-
-/* Responsive */
-@media (max-width: 800px) {
-    .grid { 
-        flex-direction: column; 
-        flex-wrap: nowrap; 
-        padding: 1%; 
-    }
-    .grid-item { 
-        padding-left: 0; 
-        margin-bottom: 5vw;
-    }
-    .grid-item img {
-        height: 200px;
-    }
-    .column { width: 100%; }
-    .header, .footer { 
-        width: 100%; 
-        padding-left: 0; 
-    }
-    .header {
-        margin-top: 0;
-        padding-bottom: 5%;
-    }
+@media (max-width:800px){
+  .grid{flex-direction:column;flex-wrap:nowrap;padding:1%}
+  .grid-item{padding-left:0}
+  img{width:100%}
+  .column{width:100%}
+  .header,.footer{width:100%;padding-left:0}
 }
 </style>
 </head>
