@@ -10,19 +10,24 @@
 <script>
 $(function(){
 
-  // ---- Load manifest --------------------------------------------------------
-  $.getJSON("manifest.json", function(manifest){
-      console.log("Loaded manifest:", manifest);
-      buildHome(manifest);
+  // Global manifest
+  let manifest = null;
+
+  // Load manifest.json once
+  $.getJSON("manifest.json", function(data){
+      manifest = data;
+      buildHome(data);
   }).fail(function(){
       $("body").append("<p style='color:red'>manifest.json not found</p>");
   });
 
-  // ---- Build page -----------------------------------------------------------
+  // --------------------------------------------------------------------------
+  // Build home grid view
+  // --------------------------------------------------------------------------
   function buildHome(data){
-      $("body").append("<div class='grid'></div>");
+      $("body").empty().append("<div class='grid'></div>");
 
-      // --- Header/menu once --------------------------------------------------
+      // Header/menu
       $(".grid").append(`
         <div class='header'>
           <span id='name'><a href='./'>yin xue</a></span>
@@ -35,18 +40,16 @@ $(function(){
         </div>
       `);
 
-      // --- Build sections ----------------------------------------------------
+      // Build grid items
       for (const section in data){
           const folders = data[section];
           for (const folder in folders){
               const files = folders[folder];
               const img = files.find(f => /\.(png|jpe?g|gif)$/i.test(f));
               const txt = files.find(f => /\.txt$/i.test(f));
-
               const folderPath = folder === "." ? `${section}/` : `${section}/${folder}/`;
 
               if(section === "about"){
-                  // text-only page
                   $(".grid").append(`
                     <div class='grid-item about-item'>
                       <div class='about-text' data-file='${folderPath + txt}'>Loading…</div>
@@ -54,34 +57,100 @@ $(function(){
                   `);
               } else if(img){
                   $(".grid").append(`
-                    <div class='grid-item ${section}-item'>
-                      <a href='${folderPath}'>
+                    <div class='grid-item ${section}-item' data-section='${section}' data-folder='${folder}'>
+                      <a href='#' class='open-project'>
                         <img src='${folderPath + img}' alt='${folder}' />
                       </a>
-                      ${txt ? `<p class='desc' data-file='${folderPath + txt}'>${folder}</p>` : ""}
+                      ${txt ? `<p class='desc'>${folder}</p>` : ""}
                     </div>
                   `);
               }
           }
       }
 
-      // --- Load .txt contents asynchronously --------------------------------
+      // Load .txt into about
       $("[data-file]").each(function(){
           const el = $(this);
           const file = el.data("file");
-          if(file.endsWith(".txt")){
+          if(file && file.endsWith(".txt")){
               $.get(file, function(t){ el.text(t); });
           }
       });
 
-      // --- Menu toggles ------------------------------------------------------
+      // Menu toggles
       $("#show-all").on("click", ()=>$(".grid-item").fadeIn(300));
       $("#show-projects").on("click", ()=>{$(".grid-item").hide(); $(".projects-item").fadeIn(300);});
       $("#show-commissions").on("click", ()=>{$(".grid-item").hide(); $(".commissions-item").fadeIn(300);});
       $("#show-about").on("click", ()=>{$(".grid-item").hide(); $(".about-item").fadeIn(300);});
 
-      // --- Footer ------------------------------------------------------------
-      $(".grid").append(`
+      // Clicking thumbnail loads single project view
+      $(".open-project").on("click", function(e){
+          e.preventDefault();
+          const parent = $(this).closest(".grid-item");
+          const section = parent.data("section");
+          const folder = parent.data("folder");
+          loadProject(section, folder);
+      });
+
+      addFooter();
+  }
+
+  // --------------------------------------------------------------------------
+  // Build single project view
+  // --------------------------------------------------------------------------
+  function loadProject(section, folder){
+      $("body").empty().append("<div class='project-view'></div>");
+
+      const files = manifest[section][folder];
+      const folderPath = folder === "." ? `${section}/` : `${section}/${folder}/`;
+
+      $(".project-view").append(`
+        <div class='header'>
+          <span id='name'><a href='./'>yin xue</a></span>
+          <span id='menu'>
+            <a href='#' id='back-home'>← back</a>
+          </span>
+        </div>
+      `);
+
+      // Add images
+      for(const f of files){
+          if(/\.(png|jpe?g|gif)$/i.test(f)){
+              $(".project-view").append(`
+                <div class='project-image'><img src='${folderPath + f}' alt='${folder}' /></div>
+              `);
+          }
+      }
+
+      // Add text files
+      for(const f of files){
+          if(/\.txt$/i.test(f)){
+              $(".project-view").append(`
+                <div class='project-text' data-file='${folderPath + f}'>Loading…</div>
+              `);
+          }
+      }
+
+      // Load text content
+      $(".project-text").each(function(){
+          const el = $(this);
+          $.get(el.data("file"), t=>el.text(t));
+      });
+
+      // Back to home
+      $("#back-home").on("click", function(e){
+          e.preventDefault();
+          buildHome(manifest);
+      });
+
+      addFooter();
+  }
+
+  // --------------------------------------------------------------------------
+  // Footer builder
+  // --------------------------------------------------------------------------
+  function addFooter(){
+      $(".grid, .project-view").append(`
         <div class='footer'>
           <div class='row'>
             <div class='column'>
@@ -96,10 +165,10 @@ $(function(){
             </div>
             <div class='column'>
               <h1>legal</h1>
-              IBAN/SEPA: NL28ABNA06123<br>
-              BIC: ABNAN<br>
-              TAX: NL182813B01<br>
-              Chamber of Commerce: 2448402
+              IBAN/SEPA: NL28ABNA0612165213<br>
+              BIC: ABNANL2A<br>
+              TAX: NL182813198B01<br>
+              Chamber of Commerce: 24484602
             </div>
             <div class='column'></div>
           </div>
@@ -123,6 +192,7 @@ pre,address{display:none}
 .grid{padding:8%;display:flex;flex-wrap:wrap}
 .grid-item{flex:1;padding-left:20px;margin-bottom:2vw;transition:opacity .3s}
 img{width:38vw;object-fit:cover}
+.project-view img{width:100%;max-width:800px;margin:auto;display:block;padding-bottom:1rem}
 
 .header{padding-left:20px;padding-bottom:10%;margin-top:-100px;width:96.5%}
 #menu a{cursor:pointer}
@@ -130,11 +200,14 @@ img{width:38vw;object-fit:cover}
 span#name{float:left;font-size:1.3rem}
 span#menu{float:right;font-size:1.3rem}
 
+.project-text,.about-text{
+  max-width:600px;line-height:1.5em;font-size:14px;
+  padding:1em;margin:auto;
+}
+
 .footer{padding-top:50px;padding-left:20px;width:96.5%;padding-bottom:3rem}
 .column{float:left;width:25%}
 .row:after{content:"";display:table;clear:both}
-
-.about-text{max-width:600px;line-height:1.5em;font-size:14px;padding:1em}
 
 @media (max-width:800px){
   .grid{flex-direction:column;flex-wrap:nowrap;padding:1%}
