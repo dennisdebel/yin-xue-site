@@ -124,46 +124,56 @@ $(function(){
     const commItems = $(".commissions-item");
     const aboutItems = $(".about-item");
 
-    // Reset styles before applying filter
+    // Clear active link highlight
+    $("#menu a").removeClass("active");
+
+    // Reset all to hidden first (instant collapse)
     allItems.stop(true,true)
       .css({
-        "opacity": 1,
-        "pointer-events": "auto",
-        "flex": "1 0 40%",
-        "transition": "opacity 0.4s ease"
+        "opacity": 0,
+        "pointer-events": "none",
+        "display": "none"
       });
 
-    // clear active state
-    $("#menu a").removeClass("active");
+    // Helper: show a specific set nicely
+    function reveal($el) {
+      $el.css({
+        "display": "flex",
+        "opacity": 0
+      }).animate({opacity:1}, 300)
+       .css({
+         "pointer-events":"auto",
+         "flex":"1 0 40%"
+       });
+    }
 
     switch(section){
       case "projects":
         $("#show-projects").addClass("active");
-        commItems.css({"opacity":0,"pointer-events":"none"});
-        projItems.css({"opacity":1,"pointer-events":"auto"});
-        aboutItems.css({"opacity":0,"pointer-events":"none"});
+        reveal(projItems);
         break;
 
       case "commissions":
         $("#show-commissions").addClass("active");
-        projItems.css({"opacity":0,"pointer-events":"none"});
-        commItems.css({"opacity":1,"pointer-events":"auto"});
-        aboutItems.css({"opacity":0,"pointer-events":"none"});
+        reveal(commItems);
         break;
 
       case "about":
         $("#show-about").addClass("active");
-        allItems.css({"opacity":0,"pointer-events":"none"});
-        aboutItems.css({"opacity":1,"pointer-events":"auto"});
+        reveal(aboutItems);
         break;
 
       case "all":
       default:
         $("#show-all").addClass("active");
-        allItems.css({"opacity":1,"pointer-events":"auto"});
+        reveal(allItems);
         break;
     }
+
+    // Optional: auto-scroll to top for better mobile UX
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
+
   // -------------------- Project View --------------------
   function loadProject(section, folder, push){
       const oldContent = $(".content");
@@ -226,21 +236,10 @@ $(function(){
         <div class='footer'>
           <div class='row'>
             <div class='column'>
-              <h1>links</h1>
-              <a href='https://www.youtube.com/user/danosdotnl' target='_blank'>instagram</a><br>
-              <a href='https://github.com/dennisdebel' target='_blank'>rednote</a><br>
-              <a href='https://soundcloud.com/errorpage' target='_blank'>soundcloud</a>
             </div>
             <div class='column'>
-              <h1>contact</h1>
-              dennis de bel<br>+31624106201<br>dennisdebel@gmail.com
             </div>
             <div class='column'>
-              <h1>legal</h1>
-              IBAN/SEPA: NL28ABNA0612165213<br>
-              BIC: ABNANL2A<br>
-              TAX: NL182813198B01<br>
-              Chamber of Commerce: 24484602
             </div>
             <div class='column'></div>
           </div>
