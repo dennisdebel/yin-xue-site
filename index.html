@@ -14,33 +14,37 @@ $(function(){
   // ---------- Boot ----------
   createHeader();
 
-  // Load manifest, then route based on URL (supports deep links)
+  // Prepare wrapper containers (once)
+  if (!$("#site-wrapper").length) {
+    $("body").append(`
+      <main id="site-wrapper"></main>
+      <footer id="global-footer"></footer>
+    `);
+  }
+
+  // Load manifest and initialize routing
   $.getJSON("manifest.json")
     .done(data => {
       manifest = data;
-      routeFromURL();                    // initial render (supports shared URLs)
-      window.addEventListener("popstate", routeFromURL);  // back/forward
+      routeFromURL();
+      window.addEventListener("popstate", routeFromURL);
     })
     .fail(() => {
-      $("body").append("<p style='color:red'>manifest.json not found</p>");
+      $("#site-wrapper").html("<p style='color:red'>manifest.json not found</p>");
     });
 
   // ---------- Router ----------
   function routeFromURL() {
     const params = new URLSearchParams(location.search);
-    const rawSection = params.get("section");
-    const rawProject = params.get("project");
+    const section = params.get("section");
+    const project = params.get("project");
 
-    const section = rawSection ? decodeURIComponent(rawSection) : null;
-    const project = rawProject ? decodeURIComponent(rawProject) : null;
-
-    // Clean previous view
     $(".content, .project-back, .back-btn").remove();
 
     if (section && project && manifest[section] && manifest[section][project]) {
-      renderProject(section, project, /*push=*/false);
+      renderProject(section, project, false);
     } else {
-      renderHome(); // default / invalid -> home
+      renderHome();
     }
   }
 
@@ -67,42 +71,24 @@ $(function(){
       `);
     }
 
-    // universal navigation: always reset to home first
+    // Header navigation: always go back to home view
     $(document)
       .off("click.nav")
-      .on("click.nav", "#show-all", function(e){
-        e.preventDefault();
-        goHomeAndFilter("all");
-      })
-      .on("click.nav", "#show-projects", function(e){
-        e.preventDefault();
-        goHomeAndFilter("projects");
-      })
-      .on("click.nav", "#show-commissions", function(e){
-        e.preventDefault();
-        goHomeAndFilter("commissions");
-      })
-      .on("click.nav", "#show-about", function(e){
-        e.preventDefault();
-        goHomeAndFilter("about");
-      });
+      .on("click.nav", "#show-all", e => { e.preventDefault(); goHomeAndFilter("all"); })
+      .on("click.nav", "#show-projects", e => { e.preventDefault(); goHomeAndFilter("projects"); })
+      .on("click.nav", "#show-commissions", e => { e.preventDefault(); goHomeAndFilter("commissions"); })
+      .on("click.nav", "#show-about", e => { e.preventDefault(); goHomeAndFilter("about"); });
   }
 
-  // Helper that safely tears down and rebuilds the home grid
+  // ---------- Go Home + Filter ----------
   function goHomeAndFilter(section){
-    // wipe any current content (project view, back button, old grid)
     $(".content, .project-back, .back-btn").remove();
-
-    // reset URL
     history.pushState({}, "", "./");
 
-    // rebuild the home grid from manifest (if already loaded)
     if (manifest){
       renderHome();
-      // wait a short moment for DOM insertion, then filter
       setTimeout(()=>showSection(section), 200);
     } else {
-      // manifest not ready yet, fetch then retry
       $.getJSON("manifest.json").done(data=>{
         manifest = data;
         renderHome();
@@ -111,13 +97,11 @@ $(function(){
     }
   }
 
-
   // ---------- Home (Grid) ----------
   function renderHome(){
-    const $grid = $(`<div class='content grid' style='display:none'></div>`);
-    $("body").append($grid);
+    $("#site-wrapper").html("<div class='content grid' style='display:none'></div>");
+    const $grid = $("#site-wrapper .grid");
 
-    // Build from manifest
     for (const section in manifest){
       const folders = manifest[section];
       for (const folder in folders){
@@ -144,7 +128,7 @@ $(function(){
       }
     }
 
-    // Load about text (if any)
+    // Load about text
     $grid.find("[data-file]").each(function(){
       const el = $(this);
       const file = el.data("file");
@@ -153,20 +137,17 @@ $(function(){
       }
     });
 
-    // Thumbnail -> Project
+    // Click thumbnail
     $grid.on("click", ".open-project", function(e){
       e.preventDefault();
-      const $parent = $(this).closest(".grid-item");
-      const section = $parent.data("section");
-      const folder  = $parent.data("folder");
-      navigateTo(section, folder);
+      const parent = $(this).closest(".grid-item");
+      navigateTo(parent.data("section"), parent.data("folder"));
     });
 
-    addFooter($grid);
     $grid.fadeIn(300);
   }
 
-  // ---------- Section Filter (no ghost space on mobile) ----------
+  // ---------- Section Filter ----------
   function showSection(section){
     const $grid = $(".grid");
     if(!$grid.length) { renderHome(); return; }
@@ -177,36 +158,19 @@ $(function(){
     const $about= $grid.find(".about-item");
 
     $("#menu a").removeClass("active");
-
-    // Collapse everything first (no space taken)
     $all.stop(true,true).css({ display:"none", opacity:0, pointerEvents:"none" });
 
-    function reveal($el){
-      $el.css({ display:"flex", opacity:0, pointerEvents:"auto", flex:"1 0 40%" })
-         .animate({opacity:1}, 250);
-    }
+    const reveal = $el => $el.css({
+      display:"flex", opacity:0, pointerEvents:"auto", flex:"0 1 clamp(260px, 40vw, 520px)"
+    }).animate({opacity:1}, 250);
 
     switch(section){
-      case "projects":
-        $("#show-projects").addClass("active");
-        reveal($proj);
-        break;
-      case "commissions":
-        $("#show-commissions").addClass("active");
-        reveal($comm);
-        break;
-      case "about":
-        $("#show-about").addClass("active");
-        reveal($about);
-        break;
-      case "all":
-      default:
-        $("#show-all").addClass("active");
-        reveal($all);
-        break;
+      case "projects": $("#show-projects").addClass("active"); reveal($proj); break;
+      case "commissions": $("#show-commissions").addClass("active"); reveal($comm); break;
+      case "about": $("#show-about").addClass("active"); reveal($about); break;
+      default: $("#show-all").addClass("active"); reveal($all); break;
     }
 
-    // UX: scroll to top on mobile when switching categories
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
@@ -215,57 +179,43 @@ $(function(){
     const files = (manifest && manifest[section]) ? manifest[section][folder] : null;
     if(!files){ renderHome(); return; }
 
-    if (pushState) {
-      navigateTo(section, folder);
-      return; // navigateTo will call routeFromURL -> renderProject again
-    }
+    if (pushState) { navigateTo(section, folder); return; }
 
-    const $view = $(`<div class='content project-view' style='display:none'></div>`);
-    $("body").append($view);
+    $("#site-wrapper").html("<div class='content project-view' style='display:none'></div>");
+    const $view = $("#site-wrapper .project-view");
 
-    // Back (consistent)
+    // Back button
     if (!$(".project-back").length) {
       $("#global-header").after(`<div class='project-back'><a href='#' id='back-home'>← back</a></div>`);
       $("#back-home").off("click").on("click", function(e){
         e.preventDefault();
         history.pushState({}, "", "./");
-        $(".project-back").remove();   // always remove container
-        routeFromURL();                // go home
+        $(".project-back").remove();
+        routeFromURL();
       });
     }
 
-    // Images
     for(const f of files){
       if(/\.(png|jpe?g|gif)$/i.test(f)){
         $view.append(`<div class='project-image'><img src='${section}/${f}' alt='${folder}' /></div>`);
       }
     }
-    // Text (after images)
+
     for(const f of files){
       if(/\.txt$/i.test(f)){
         $view.append(`<div class='project-text' data-file='${section}/${f}'>Loading…</div>`);
       }
     }
+
     $view.find(".project-text").each(function(){
       const el = $(this);
       $.get(el.data("file"), t => el.text(t));
     });
 
-    addFooter($view);
     $view.fadeIn(300);
   }
 
-  // ---------- Footer ----------
-  function addFooter(target){
-    target.append(`
-      <div class='footer'>
-       
-      </div>
-    `);
-  }
-
 });
-
 </script>
 
 <style>
@@ -274,64 +224,123 @@ $(function(){
   src:url('https://dennisdebel.nl/2017/NimbusSanL-Reg.woff2') format('woff2'),
       url('https://dennisdebel.nl/2017/NimbusSanL-Reg.ttf') format('truetype');
 }
+
 body{font-family:"yolo";margin:0;padding:0;background:#fff;}
 a{color:black;text-decoration:none}
 pre,address{display:none}
 
+/* ---------- Header ---------- */
 #global-header{
   position:sticky;
   top:0;
   background:white;
   z-index:999;
   padding:1rem 2rem;
+  width:100%;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  border-bottom:1px solid #eee;
 }
 #menu a{cursor:pointer}
 #menu a:hover{text-decoration:underline}
-span#name{float:left;font-size:1.3rem}
-span#menu{float:right;font-size:1.3rem}
+#menu a.active{text-decoration:underline;font-weight:bold}
+span#name{font-size:1.3rem}
+span#menu{font-size:1.3rem}
 
-.back-btn,.project-back{
-  padding:0.5em 2rem;
-  font-size:1rem;
+/* ---------- Layout ---------- */
+#site-wrapper{
+  display:flex;
+  justify-content:center;
+  width:100%;
+  min-height:80vh;
+  box-sizing:border-box;
 }
 
-.grid{padding:8%;display:flex;flex-wrap:wrap;justify-content:flex-start;align-content:flex-start;}
-.grid-item {
-  display: flex;
-  flex-direction: column;   /* stack image and caption vertically */
-  align-items: flex-start;  /* left-align text under image */
-  flex: 1 0 40%;
-  padding: 1rem;
-  box-sizing: border-box;
+/* Centered grid */
+.content.grid{
+  max-width:1200px;
+  width:100%;
+  margin:0 auto;
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:center;
+  align-content:flex-start;
+  gap:1.25rem;
+  padding:2rem 1rem;
+  box-sizing:border-box;
 }
-.grid-item .desc {
-  margin-top: 0.5rem;     /* space between image and text */
-  font-size: 0.9rem;
-  line-height: 1.2;
-}
-img{width:100%;object-fit:cover;display:block;border-radius:4px;transition:transform .3s ease}
-img:hover{transform:scale(1.02)}
 
-.project-view img{width:100%;max-width:800px;margin:auto;display:block;padding-bottom:1rem;opacity:0;animation:fadeIn .5s forwards;}
-@keyframes fadeIn {to{opacity:1;}}
+/* Grid items */
+.grid-item{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  flex:0 1 clamp(260px, 40vw, 520px);
+  box-sizing:border-box;
+}
+.grid-item .desc{
+  margin-top:0.5rem;
+  text-align:center;
+  font-size:0.9rem;
+  line-height:1.2;
+}
+.grid-item img{
+  width:100%;
+  object-fit:cover;
+  border-radius:4px;
+  transition:transform .3s ease;
+}
+.grid-item img:hover{transform:scale(1.02)}
+
+/* Project view */
+.project-view img{
+  width:100%;
+  max-width:800px;
+  margin:auto;
+  display:block;
+  padding-bottom:1rem;
+  opacity:0;
+  animation:fadeIn .5s forwards;
+}
+@keyframes fadeIn{to{opacity:1;}}
 
 .project-text,.about-text{
-  max-width:600px;line-height:1.5em;font-size:14px;
-  padding:1em;margin:auto;opacity:0;animation:fadeIn .8s forwards;
+  max-width:600px;
+  line-height:1.5em;
+  font-size:14px;
+  padding:1em;
+  margin:auto;
+  opacity:0;
+  animation:fadeIn .8s forwards;
 }
 
-.footer{padding-top:50px;padding-left:20px;width:96.5%;padding-bottom:3rem;opacity:0;animation:fadeIn 1s forwards;}
-.column{float:left;width:25%}
-.row:after{content:"";display:table;clear:both}
+/* Footer (empty container now) */
+#global-footer{
+  width:100%;
+  padding:2rem;
+  background:white;
+  box-sizing:border-box;
+}
 
+/* Mobile */
 @media (max-width:800px){
-  .grid{flex-direction:column;padding:1rem;}
-  .grid-item{padding:0}
-  img{width:100%}
-  .column{width:100%}
+  .content.grid{
+    padding:1rem;
+    gap:0.75rem;
+  }
+  .grid-item{
+    flex:0 1 100%;
+    max-width:36rem;
+  }
   #global-header{padding:1rem}
 }
 </style>
 </head>
-<body></body>
+
+<body>
+  <div id="global-header"></div>
+  <main id="site-wrapper"></main>
+  <footer id="global-footer"></footer>
+</body>
 </html>
