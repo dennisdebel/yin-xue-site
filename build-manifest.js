@@ -31,7 +31,7 @@ async function main() {
             f.isFile() &&
             /\.(png|jpe?g|gif|webp|mp4|mov|txt|html)$/i.test(f.name)
         )
-        .map(f => f.name);
+        .map(f => `${folder.name}/${f.name}`);
 
       if (files.length) manifest[root]["."] = files;
       continue;
