@@ -5,6 +5,7 @@ import path from "path";
 const ROOTS = ["projects", "commissions", "about"];
 const OUT_FILE = "manifest.json";
 
+// Gracefully list directory contents
 async function safeReaddir(dir) {
   try {
     return await fs.readdir(dir, { withFileTypes: true });
@@ -18,24 +19,34 @@ async function main() {
   const manifest = {};
 
   for (const root of ROOTS) {
-    const folders = await safeReaddir(root);
+    const entries = await safeReaddir(root);
     manifest[root] = {};
 
-    if (folders.length === 0) {
-      // If root has only files (e.g. about/text.txt)
-      const files = (await safeReaddir(root === "." ? "." : root))
-        .filter(f => f.isFile && /\.(png|jpe?g|gif|txt)$/i.test(f.name))
+    // Case 1: root folder directly contains files (like "about")
+    const hasSubfolders = entries.some(e => e.isDirectory());
+    if (!hasSubfolders) {
+      const files = entries
+        .filter(
+          f =>
+            f.isFile() &&
+            /\.(png|jpe?g|gif|webp|mp4|mov|txt|html)$/i.test(f.name)
+        )
         .map(f => f.name);
+
       if (files.length) manifest[root]["."] = files;
       continue;
     }
 
-    // Otherwise: subfolders
-    for (const folder of folders.filter(f => f.isDirectory())) {
+    // Case 2: root has subfolders (projects, commissions)
+    for (const folder of entries.filter(f => f.isDirectory())) {
       const subdir = path.join(root, folder.name);
       const files = (await safeReaddir(subdir))
-        .filter(f => f.isFile && /\.(png|jpe?g|gif|txt)$/i.test(f.name))
-        .map(f => `${folder.name}/${f.name}`);
+        .filter(
+          f =>
+            f.isFile() &&
+            /\.(png|jpe?g|gif|webp|mp4|mov|txt|html)$/i.test(f.name)
+        )
+        .map(f => f.name);
 
       if (files.length) manifest[root][folder.name] = files;
     }
