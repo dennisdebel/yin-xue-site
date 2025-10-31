@@ -296,45 +296,19 @@ span#menu{float:right;font-size:1.3rem}
 }
 
 .grid{padding:8%;display:flex;flex-wrap:wrap;justify-content:flex-start;align-content:flex-start;}
-
-/* Center the main grid container */
-.content.grid {
-  max-width: 1200px;         /* control maximum width */
-  margin: 0 auto;            /* centers horizontally */
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;   /* center items horizontally */
-  align-content: flex-start; /* start from top, no weird gaps */
-  padding: 4%;
-  box-sizing: border-box;
-}
-
-
-/* ensure each grid item has consistent spacing */
 .grid-item {
   display: flex;
-  flex-direction: column;
-  align-items: center;        /* center caption under image */
+  flex-direction: column;   /* stack image and caption vertically */
+  align-items: flex-start;  /* left-align text under image */
   flex: 1 0 40%;
-  max-width: 500px;
   padding: 1rem;
   box-sizing: border-box;
 }
-
-/* image + caption alignment */
-.grid-item img {
-  width: 100%;
-  height: auto;
-  display: block;
-  object-fit: cover;
-}
-
 .grid-item .desc {
-  margin-top: 0.6rem;
-  text-align: center;
+  margin-top: 0.5rem;     /* space between image and text */
   font-size: 0.9rem;
+  line-height: 1.2;
 }
-
 img{width:100%;object-fit:cover;display:block;border-radius:4px;transition:transform .3s ease}
 img:hover{transform:scale(1.02)}
 
