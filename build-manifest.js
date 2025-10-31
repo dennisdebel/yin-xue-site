@@ -18,33 +18,42 @@ async function main() {
   const manifest = {};
 
   for (const root of ROOTS) {
-    const folders = await safeReaddir(root);
     manifest[root] = {};
+    const entries = await safeReaddir(root);
 
-    // Case 1: root directly has files (like "about/")
-    if (folders.length === 0) {
-      const files = (await safeReaddir(root))
-        .filter(f => f.isFile() && /\.(png|jpe?g|gif|txt)$/i.test(f.name))
-        .map(f => f.name);
-      if (files.length) manifest[root]["."] = files;
-      continue;
+    // --- Case 1: directory contains only files (e.g. about/)
+    const subdirs = entries.filter(e => e.isDirectory());
+    const filesInRoot = entries
+      .filter(
+        e =>
+          e.isFile() &&
+          /\.(png|jpe?g|gif|webp|mp4|mov|txt|html)$/i.test(e.name)
+      )
+      .map(e => e.name);
+
+    if (filesInRoot.length) {
+      manifest[root]["."] = filesInRoot;
     }
 
-    // Case 2: root has subfolders
-    for (const folder of folders.filter(f => f.isDirectory())) {
+    // --- Case 2: iterate subfolders (projects, commissions)
+    for (const folder of subdirs) {
       const subdir = path.join(root, folder.name);
-      const files = (await safeReaddir(subdir))
-        .filter(f => f.isFile() && /\.(png|jpe?g|gif|txt)$/i.test(f.name))
-        .map(f => `${folder.name}/${f.name}`);
-      if (files.length) manifest[root][folder.name] = files;
+      const subfiles = (await safeReaddir(subdir))
+        .filter(
+          e =>
+            e.isFile() &&
+            /\.(png|jpe?g|gif|webp|mp4|mov|txt|html)$/i.test(e.name)
+        )
+        .map(e => `${folder.name}/${e.name}`);
+      if (subfiles.length) manifest[root][folder.name] = subfiles;
     }
   }
 
   await fs.writeFile(OUT_FILE, JSON.stringify(manifest, null, 2));
-  console.log(`✅ Wrote ${OUT_FILE}`);
+  console.log(`✅ wrote ${OUT_FILE}`);
 }
 
 main().catch(err => {
-  console.error("❌ Build failed:", err);
+  console.error("❌ build failed:", err);
   process.exit(1);
 });
