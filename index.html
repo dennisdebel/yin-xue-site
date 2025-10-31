@@ -57,28 +57,24 @@ $(function(){
   }
 
   // ---------- Header ----------
-  function createHeader(){
-    if(!$("#global-header").length){
-      $("body").prepend(`
-        <div id="global-header">
-          <span id='name'><a href='#' id='show-all'>yin xue</a></span>
-          <span id='menu'>
-            <a href='#' id='show-projects'>projects</a>&nbsp;&nbsp;
-            <a href='#' id='show-commissions'>commissions</a>&nbsp;&nbsp;
-            <a href='#' id='show-about'>about</a>
-          </span>
-        </div>
-      `);
-    }
+function createHeader(){
+  $("#global-header").html(`
+    <span id='name'><a href='#' id='show-all'>yin xue</a></span>
+    <span id='menu'>
+      <a href='#' id='show-projects'>projects</a>&nbsp;&nbsp;
+      <a href='#' id='show-commissions'>commissions</a>&nbsp;&nbsp;
+      <a href='#' id='show-about'>about</a>
+    </span>
+  `);
 
-    // Header navigation: always go back to home view
-    $(document)
-      .off("click.nav")
-      .on("click.nav", "#show-all", e => { e.preventDefault(); goHomeAndFilter("all"); })
-      .on("click.nav", "#show-projects", e => { e.preventDefault(); goHomeAndFilter("projects"); })
-      .on("click.nav", "#show-commissions", e => { e.preventDefault(); goHomeAndFilter("commissions"); })
-      .on("click.nav", "#show-about", e => { e.preventDefault(); goHomeAndFilter("about"); });
-  }
+  // Header navigation
+  $(document)
+    .off("click.nav")
+    .on("click.nav", "#show-all", e => { e.preventDefault(); goHomeAndFilter("all"); })
+    .on("click.nav", "#show-projects", e => { e.preventDefault(); goHomeAndFilter("projects"); })
+    .on("click.nav", "#show-commissions", e => { e.preventDefault(); goHomeAndFilter("commissions"); })
+    .on("click.nav", "#show-about", e => { e.preventDefault(); goHomeAndFilter("about"); });
+}
 
   // ---------- Go Home + Filter ----------
   function goHomeAndFilter(section){
