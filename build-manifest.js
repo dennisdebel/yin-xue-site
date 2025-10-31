@@ -9,7 +9,7 @@ async function safeReaddir(dir) {
   try {
     return await fs.readdir(dir, { withFileTypes: true });
   } catch (err) {
-    if (err.code === "ENOENT") return []; // folder missing
+    if (err.code === "ENOENT") return [];
     throw err;
   }
 }
@@ -21,22 +21,21 @@ async function main() {
     const folders = await safeReaddir(root);
     manifest[root] = {};
 
+    // Case 1: root directly has files (like "about/")
     if (folders.length === 0) {
-      // If root has only files (e.g. about/text.txt)
-      const files = (await safeReaddir(root === "." ? "." : root))
-        .filter(f => f.isFile && /\.(png|jpe?g|gif|txt)$/i.test(f.name))
+      const files = (await safeReaddir(root))
+        .filter(f => f.isFile() && /\.(png|jpe?g|gif|txt)$/i.test(f.name))
         .map(f => f.name);
       if (files.length) manifest[root]["."] = files;
       continue;
     }
 
-    // Otherwise: subfolders
+    // Case 2: root has subfolders
     for (const folder of folders.filter(f => f.isDirectory())) {
       const subdir = path.join(root, folder.name);
       const files = (await safeReaddir(subdir))
-        .filter(f => f.isFile && /\.(png|jpe?g|gif|txt)$/i.test(f.name))
+        .filter(f => f.isFile() && /\.(png|jpe?g|gif|txt)$/i.test(f.name))
         .map(f => `${folder.name}/${f.name}`);
-
       if (files.length) manifest[root][folder.name] = files;
     }
   }
