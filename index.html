@@ -99,22 +99,17 @@ function createHeader(){
     const $grid = $("#site-wrapper .grid");
 
     for (const section in manifest){
+      // ✅ Skip about section entirely when building the homepage grid
+      if (section === "about") continue;
+
       const folders = manifest[section];
       for (const folder in folders){
         const files = folders[folder];
-        // Pick only "featured.jpg/jpeg" for homepage thumbnails
-        // On homepage, only show featured images; for category views, we'll re-filter later
         const img = files.find(f => /featured\.(jpe?g)$/i.test(f));
+        const txt = files.find(f => /\.txt$/i.test(f));
         const hasFeatured = Boolean(img);
 
-        const txt = files.find(f => /\.txt$/i.test(f));
-
-        if(section === "about"){
-          // Only show about text when the About menu is selected
-          // (hide it on homepage and other views)
-          return; // kip adding about section to the homepage grid
-        } else if (hasFeatured) {
-          // homepage uses only featured
+        if (hasFeatured) {
           $grid.append(`
             <div class='grid-item ${section}-item' data-section='${section}' data-folder='${folder}'>
               <a href='?section=${encodeURIComponent(section)}&project=${encodeURIComponent(folder)}' class='open-project'>
@@ -126,6 +121,7 @@ function createHeader(){
         }
       }
     }
+
 
     // Load about text
     $grid.find("[data-file]").each(function(){
