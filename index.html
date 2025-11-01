@@ -103,16 +103,21 @@ function createHeader(){
       for (const folder in folders){
         const files = folders[folder];
         // Pick only "featured.jpg/jpeg" for homepage thumbnails
+        // On homepage, only show featured images; for category views, we'll re-filter later
         const img = files.find(f => /featured\.(jpe?g)$/i.test(f));
+        const hasFeatured = Boolean(img);
+
         const txt = files.find(f => /\.txt$/i.test(f));
 
         if(section === "about"){
+          // about logic unchanged
           $grid.append(`
             <div class='grid-item about-item'>
               <div class='about-text' data-file='${section}/${txt || ""}'>Loading…</div>
             </div>
           `);
-        } else if(img){
+        } else if (hasFeatured) {
+          // homepage uses only featured
           $grid.append(`
             <div class='grid-item ${section}-item' data-section='${section}' data-folder='${folder}'>
               <a href='?section=${encodeURIComponent(section)}&project=${encodeURIComponent(folder)}' class='open-project'>
@@ -147,7 +152,15 @@ function createHeader(){
   // ---------- Section Filter ----------
   function showSection(section){
     const $grid = $(".grid");
-    if(!$grid.length) { renderHome(); return; }
+    if(!$grid.length) { renderHome(); }
+
+    // when switching to projects or commissions, ensure all folders are visible (not only featured)
+    if(section === "projects" || section === "commissions"){
+      // rebuild grid showing all thumbnails for this category
+      rebuildSection(section);
+      return;
+    }
+
 
     const $all  = $grid.find(".grid-item");
     const $proj = $grid.find(".projects-item");
@@ -169,6 +182,30 @@ function createHeader(){
     }
 
     window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function rebuildSection(section){
+    $("#site-wrapper").html("<div class='content grid' style='display:none'></div>");
+    const $grid = $("#site-wrapper .grid");
+
+    const folders = manifest[section];
+    for (const folder in folders){
+      const files = folders[folder];
+      const img = files.find(f => /\.(png|jpe?g|gif)$/i.test(f));
+      const txt = files.find(f => /\.txt$/i.test(f));
+      if(!img) continue;
+
+      $grid.append(`
+        <div class='grid-item ${section}-item' data-section='${section}' data-folder='${folder}'>
+          <a href='?section=${encodeURIComponent(section)}&project=${encodeURIComponent(folder)}' class='open-project'>
+            <img src='${section}/${img}' alt='${folder}'/>
+          </a>
+          ${txt ? `<p class='desc'>${folder}</p>` : ""}
+        </div>
+      `);
+    }
+
+    $grid.fadeIn(300);
   }
 
   // ---------- Project View ----------
