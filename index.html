@@ -73,8 +73,12 @@ function createHeader(){
     .on("click.nav", "#show-all", e => { e.preventDefault(); goHomeAndFilter("all"); })
     .on("click.nav", "#show-projects", e => { e.preventDefault(); goHomeAndFilter("projects"); })
     .on("click.nav", "#show-commissions", e => { e.preventDefault(); goHomeAndFilter("commissions"); })
-    .on("click.nav", "#show-about", e => { e.preventDefault(); goHomeAndFilter("about"); });
-}
+    .on("click.nav", "#show-about", e => {
+      e.preventDefault();
+      $(".content, .project-back, .back-btn").remove();
+      renderAbout();
+    });
+
 
   // ---------- Go Home + Filter ----------
   function goHomeAndFilter(section){
@@ -176,6 +180,36 @@ function createHeader(){
 
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
+
+  // ---------- About View ----------
+  function renderAbout(){
+    $("#site-wrapper").html("<div class='content about-view' style='display:none'></div>");
+    const $view = $("#site-wrapper .about-view");
+
+    const aboutFiles = manifest.about["."] || [];
+    const txt = aboutFiles.find(f => /\.txt$/i.test(f));
+    const img = aboutFiles.find(f => /\.(png|jpe?g|gif)$/i.test(f));
+
+    if (img) {
+      $view.append(`<div class='about-image'><img src='about/${img}' alt='about image'/></div>`);
+    }
+    if (txt) {
+      $view.append(`<div class='about-text' data-file='about/${txt}'>Loading…</div>`);
+    }
+
+    // Load the actual text (and render as HTML if needed)
+    $view.find(".about-text").each(function(){
+      const el = $(this);
+      const file = el.data("file");
+      $.get(file, t => {
+        if (/\<[^>]+\>/.test(t)) el.html(t); // render HTML if tags are present
+        else el.text(t);
+      });
+    });
+
+    $view.fadeIn(300);
+  }
+
 
   function rebuildSection(section){
     $("#site-wrapper").html("<div class='content grid' style='display:none'></div>");
