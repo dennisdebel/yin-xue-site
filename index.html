@@ -110,12 +110,9 @@ function createHeader(){
         const txt = files.find(f => /\.txt$/i.test(f));
 
         if(section === "about"){
-          // about logic unchanged
-          $grid.append(`
-            <div class='grid-item about-item'>
-              <div class='about-text' data-file='${section}/${txt || ""}'>Loading…</div>
-            </div>
-          `);
+          // Only show about text when the About menu is selected
+          // (hide it on homepage and other views)
+          return; // kip adding about section to the homepage grid
         } else if (hasFeatured) {
           // homepage uses only featured
           $grid.append(`
