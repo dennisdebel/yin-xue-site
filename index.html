@@ -102,7 +102,8 @@ function createHeader(){
       const folders = manifest[section];
       for (const folder in folders){
         const files = folders[folder];
-        const img = files.find(f => /\.(png|jpe?g|gif)$/i.test(f));
+        // Pick only "featured.jpg/jpeg" for homepage thumbnails
+        const img = files.find(f => /featured\.(jpe?g)$/i.test(f));
         const txt = files.find(f => /\.txt$/i.test(f));
 
         if(section === "about"){

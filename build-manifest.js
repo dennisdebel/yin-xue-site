@@ -21,7 +21,7 @@ async function main() {
     manifest[root] = {};
     const entries = await safeReaddir(root);
 
-    // --- Case 1: directory contains only files (e.g. about/)
+    // --- Case 1: directory directly has files (e.g. about/)
     const subdirs = entries.filter(e => e.isDirectory());
     const filesInRoot = entries
       .filter(
@@ -31,11 +31,9 @@ async function main() {
       )
       .map(e => e.name);
 
-    if (filesInRoot.length) {
-      manifest[root]["."] = filesInRoot;
-    }
+    if (filesInRoot.length) manifest[root]["."] = filesInRoot;
 
-    // --- Case 2: iterate subfolders (projects, commissions)
+    // --- Case 2: subfolders
     for (const folder of subdirs) {
       const subdir = path.join(root, folder.name);
       const subfiles = (await safeReaddir(subdir))
@@ -45,6 +43,7 @@ async function main() {
             /\.(png|jpe?g|gif|webp|mp4|mov|txt|html)$/i.test(e.name)
         )
         .map(e => `${folder.name}/${e.name}`);
+
       if (subfiles.length) manifest[root][folder.name] = subfiles;
     }
   }
