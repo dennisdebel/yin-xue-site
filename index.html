@@ -57,27 +57,28 @@ $(function(){
   }
 
   // ---------- Header ----------
-function createHeader(){
-  $("#global-header").html(`
-    <span id='name'><a href='#' id='show-all'>yin xue</a></span>
-    <span id='menu'>
-      <a href='#' id='show-projects'>projects</a>&nbsp;&nbsp;
-      <a href='#' id='show-commissions'>commissions</a>&nbsp;&nbsp;
-      <a href='#' id='show-about'>about</a>
-    </span>
-  `);
+  function createHeader(){
+    $("#global-header").html(`
+      <span id='name'><a href='#' id='show-all'>yin xue</a></span>
+      <span id='menu'>
+        <a href='#' id='show-projects'>projects</a>&nbsp;&nbsp;
+        <a href='#' id='show-commissions'>commissions</a>&nbsp;&nbsp;
+        <a href='#' id='show-about'>about</a>
+      </span>
+    `);
 
-  // Header navigation
-  $(document)
-    .off("click.nav")
-    .on("click.nav", "#show-all", e => { e.preventDefault(); goHomeAndFilter("all"); })
-    .on("click.nav", "#show-projects", e => { e.preventDefault(); goHomeAndFilter("projects"); })
-    .on("click.nav", "#show-commissions", e => { e.preventDefault(); goHomeAndFilter("commissions"); })
-    .on("click.nav", "#show-about", e => {
-      e.preventDefault();
-      $(".content, .project-back, .back-btn").remove();
-      renderAbout();
-    });
+    $(document)
+      .off("click.nav")
+      .on("click.nav", "#show-all", e => { e.preventDefault(); goHomeAndFilter("all"); })
+      .on("click.nav", "#show-projects", e => { e.preventDefault(); goHomeAndFilter("projects"); })
+      .on("click.nav", "#show-commissions", e => { e.preventDefault(); goHomeAndFilter("commissions"); })
+      // ✅ this is the corrected line (removed stray paren)
+      .on("click.nav", "#show-about", e => {
+        e.preventDefault();
+        $(".content, .project-back, .back-btn").remove();
+        renderAbout();
+      });
+  }
 
 
   // ---------- Go Home + Filter ----------
